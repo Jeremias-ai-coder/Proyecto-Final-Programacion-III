@@ -37,6 +37,15 @@ Una experiencia fluida para que el usuario encuentre su turno en segundos.
 * **Base de Datos:** MySQL / PHP
 
 ---
+##  Equipo de Trabajo
+
+Este proyecto es desarrollado e impulsado por:
+
+* **Jeremias Collaud**
+* **Santino Almeira**
+* **Thiago Almeira**
+* **Emmanuel Roman**
+---
 
 ## Roadmap / Próximos Pasos
 
