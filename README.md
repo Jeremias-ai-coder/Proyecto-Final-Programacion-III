@@ -43,7 +43,6 @@ Este proyecto es desarrollado e impulsado por:
 
 * **Jeremias Collaud**
 * **Santino Almeira**
-* **Thiago Almeira**
 * **Emmanuel Roman**
 ---
 
