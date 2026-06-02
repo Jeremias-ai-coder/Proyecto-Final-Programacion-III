@@ -1,0 +1,19 @@
+{
+  "name": "turnos-ya/api",
+  "description": "API Turnos Ya con backend PHP, Eloquent ORM y frontend HTML/CSS/JS.",
+  "type": "project",
+  "require": {
+    "php": ">=8.0",
+    "illuminate/database": "^10.0",
+    "illuminate/events": "^10.0",
+    "vlucas/phpdotenv": "^5.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "scripts": {
+    "start": "php -S localhost:8000 -t public"
+  }
+}

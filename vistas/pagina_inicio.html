@@ -1,0 +1,378 @@
+<?php
+require_once __DIR__ . '/../src/bootstrap.php';
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turnos Ya - Inicio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f8fa; /* Grisáceo muy claro y limpio */
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1e293b;
+        }
+        .navbar-custom {
+            background-color: #009ee3; /* Celeste Mercado Libre */
+            box-shadow: 0 4px 12px rgba(0, 158, 227, 0.08);
+        }
+        .search-bar {
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 6px rgba(0,0,0,.03);
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .search-bar:focus {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+            border-color: #ffffff;
+            outline: none;
+        }
+        
+        /* Tarjetas de negocios al estilo de Mercado Libre */
+        .ml-card { 
+            background: #ffffff; 
+            border-radius: 14px; 
+            overflow: hidden; 
+            border: 1px solid #e2e8f0; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .ml-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 10px 24px rgba(0, 158, 227, 0.08); 
+            border-color: #009ee3; 
+        }
+        .ml-card .ml-image { 
+            height: 140px; 
+            background: linear-gradient(180deg, #f8fbfd, #ffffff); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .ml-card .ml-image .avatar { 
+            width: 72px; 
+            height: 72px; 
+            border-radius: 12px; 
+            background: linear-gradient(135deg, #e6f5fc, #ffffff); 
+            color: #009ee3; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 800; 
+            font-size: 1.3rem; 
+            border: 1px solid #cce9f8;
+            box-shadow: 0 4px 10px rgba(0, 158, 227, 0.05);
+        }
+        .ml-card .card-body { 
+            padding: 16px; 
+        }
+        .ml-card .card-title { 
+            color: #0f172a; 
+            font-size: 1.05rem; 
+            font-weight: 700;
+            margin-bottom: 6px; 
+        }
+        .ml-card .card-text { 
+            color: #64748b; 
+            font-size: 0.88rem; 
+            line-height: 1.4;
+        }
+        .ml-card .actions { 
+            gap: 10px; 
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+            margin-top: auto;
+        }
+        
+        /* Controles personalizados (estilo plano de Mercado Libre) */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
+            font-size: 0.95rem;
+            transition: all 0.18s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #009ee3;
+            box-shadow: 0 0 0 3px rgba(0, 158, 227, 0.12);
+            outline: none;
+        }
+        .custom-card {
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.03);
+            background-color: #ffffff;
+        }
+        .btn-primary {
+            background-color: #009ee3;
+            border: none;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.18s ease;
+        }
+        .btn-primary:hover {
+            background-color: #0081bb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 158, 227, 0.15);
+        }
+        .btn-outline-primary {
+            color: #009ee3;
+            border: 1.5px solid #009ee3;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.18s ease;
+        }
+        .btn-outline-primary:hover {
+            background-color: #009ee3;
+            border-color: #009ee3;
+            color: #ffffff;
+        }
+        .btn-light {
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+        .btn-light:hover {
+            background-color: #e2e8f0;
+            color: #1e293b;
+        }
+        
+        /* Etiquetas de estado en tonos pastel para citas (aspecto SaaS Premium) */
+        .badge.bg-primary {
+            background-color: #e6f5fc !important;
+            color: #009ee3 !important;
+            border: 1px solid #cce9f8;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .badge.bg-success {
+            background-color: #e6f7ed !important;
+            color: #00a650 !important;
+            border: 1px solid #ccefdc;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .badge.bg-danger {
+            background-color: #fbebee !important;
+            color: #d93838 !important;
+            border: 1px solid #f6ccd2;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .badge.bg-secondary {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-custom py-3 mb-4">
+        <div class="container d-flex flex-column flex-md-row align-items-center gap-3">
+            <a class="navbar-brand fw-bold fs-4 text-white mb-0" href="/pagina-inicio">Turnos Ya</a>
+            <input type="text" id="businessSearch" class="form-control search-bar flex-grow-1 w-100" placeholder="Buscar negocios o servicios...">
+            <div class="d-flex align-items-center gap-3" id="navbarActions">
+                <input type="text" id="userDisplay" class="form-control-plaintext text-white fw-semibold p-0 text-md-end" readonly value="Cargando..." style="width: auto; pointer-events: none;">
+                <div id="dynamicNavButtons" class="d-flex gap-2"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
+
+        <!-- Grilla de negocios -->
+        <div class="row g-4" id="businessGrid">
+            <?php
+            require_once __DIR__ . '/../src/bootstrap.php';
+            use App\Models\Business;
+
+            try {
+                $businesses = Business::with(['owner','services','workSchedules'])->get();
+            } catch (Throwable $e) {
+                $businesses = collect();
+            }
+
+            if (empty($businesses) || $businesses->isEmpty()) {
+                echo '<div class="col-12"><div class="alert alert-info text-center py-4">No se encontraron negocios activos aún. ¡Regístrate y sube el tuyo!</div></div>';
+            } else {
+                foreach ($businesses as $business) {
+                    $name = htmlspecialchars($business->name ?? '', ENT_QUOTES, 'UTF-8');
+                    $description = htmlspecialchars($business->description ?? 'Sin descripción', ENT_QUOTES, 'UTF-8');
+                    $address = $business->address ? htmlspecialchars($business->address, ENT_QUOTES, 'UTF-8') : '';
+                    $logoUrl = $business->logo_url ? htmlspecialchars($business->logo_url, ENT_QUOTES, 'UTF-8') : '';
+                    $ownerName = $business->owner ? htmlspecialchars($business->owner->name, ENT_QUOTES, 'UTF-8') : 'N/D';
+                    
+                    $parts = preg_split('/\s+/', trim($business->name ?? ''));
+                    $initials = '';
+                    if (!empty($parts)) {
+                        foreach (array_slice($parts, 0, 2) as $p) {
+                            $initials .= mb_strtoupper(mb_substr($p, 0, 1));
+                        }
+                    }
+                    if (!$initials) $initials = 'TY';
+                    
+                    // Elegir si pintar el logo o las iniciales
+                    $logoContent = $logoUrl 
+                        ? "<img src=\"{$logoUrl}\" class=\"w-100 h-100 object-fit-cover rounded-circle shadow-sm p-1\" alt=\"{$name}\" onerror=\"this.outerHTML='<div class=\'avatar\'>{$initials}</div>'\">"
+                        : "<div class=\"avatar\">{$initials}</div>";
+
+                    $addressContent = $address 
+                        ? "<p class=\"mb-2 small text-muted text-truncate\" title=\"{$address}\"><span class=\"me-1\">📍</span>{$address}</p>"
+                        : "<p class=\"mb-2 small text-muted text-truncate text-secondary italic\">📍 Dirección no especificada</p>";
+                    
+                    echo "<div class=\"col-sm-6 col-md-4 col-lg-3 server-rendered\">";
+                    echo "<div class=\"ml-card h-100 d-flex flex-column shadow-sm\">";
+                    echo "<div class=\"ml-image\"><div style=\"width:72px; height:72px; display:flex; align-items:center; justify-content:center;\">{$logoContent}</div></div>";
+                    echo "<div class=\"card-body d-flex flex-column\">";
+                    echo "<h5 class=\"card-title text-truncate\">{$name}</h5>";
+                    echo "<p class=\"card-text text-truncate mb-2\">{$description}</p>";
+                    echo "{$addressContent}";
+                    echo "<p class=\"mb-3 small text-muted\">Dueño: {$ownerName}</p>";
+                    echo "<div class=\"actions d-flex justify-content-between align-items-center mt-auto\">";
+                    echo "<button class=\"btn btn-light btn-sm btn-view-business\" data-business-id=\"{$business->id}\">Ver tienda</button>";
+                    echo "<button class=\"btn btn-outline-primary btn-sm btn-select-business\" data-business-id=\"{$business->id}\">Agendar turno</button>";
+                    echo "</div></div></div></div>";
+                }
+            }
+            ?>
+        </div>
+
+        <!-- Sección de reserva oculta inicialmente -->
+        <div id="reserveSection" class="mt-5" style="display: none;">
+            <div class="card custom-card border-0 p-4 mx-auto" style="max-width: 600px;">
+                <h4 class="card-title text-center fw-bold text-dark mb-4 border-bottom pb-2">Reservar Turno</h4>
+                <form id="solicitarTurno">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted">Negocio seleccionado</label>
+                        <input type="text" id="selectedBusinessName" class="form-control bg-light" readonly style="pointer-events: none;">
+                        <input type="hidden" id="selectedBusinessId" name="business_id">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Selecciona un servicio</label>
+                        <select id="selectService" name="service_id" class="form-select" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Fecha de reserva</label>
+                        <input type="date" id="bookingDate" name="date" class="form-control" required>
+                    </div>
+                    <input type="hidden" id="bookingTime" name="time" required>
+                    <div id="timeSlotsContainer" class="mb-3" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary w-100 mt-2 py-2 fw-bold shadow-sm">Confirmar Reserva</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sección de mis turnos oculta inicialmente -->
+        <div id="myAppointmentsSection" class="mt-5" style="display: none;">
+            <div class="card custom-card border-0 p-4 mx-auto" style="max-width: 800px;">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                    <h4 class="card-title mb-0 text-primary fw-bold">Mis Turnos Agendados</h4>
+                    <button id="closeAppointmentsBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a Negocios</button>
+                </div>
+                <div id="appointmentsList" class="row g-3">
+                    <!-- Aquí se cargarán dinámicamente los turnos -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalles de Negocio -->
+    <div class="modal fade" id="businessDetailsModal" tabindex="-1" aria-labelledby="businessDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0" style="border-radius: 16px; box-shadow: 0 16px 36px rgba(0, 158, 227, 0.08);">
+                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bold text-dark fs-4" id="businessDetailsModalLabel">Detalles del Negocio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body px-4 pb-4 pt-2">
+                    <div id="businessDetailsContent">
+                        <!-- Inyección dinámica desde JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function(){
+            const candidates = [
+                'js/client.js',
+                '/js/client.js',
+                'public/js/client.js',
+                '/public/js/client.js',
+                '../public/js/client.js',
+                location.pathname.replace(/\/[^\/]*$/, '') + '/js/client.js'
+            ];
+            let i = 0;
+            function tryLoad() {
+                if (i >= candidates.length) {
+                    console.error('No se pudo cargar client.js. Rutas intentadas:', candidates);
+                    return;
+                }
+                const src = candidates[i++];
+                const s = document.createElement('script');
+                s.src = src + '?v=' + Date.now();
+                s.defer = true;
+                s.onload = () => { console.info('client.js cargado desde', src); };
+                s.onerror = () => { console.warn('Fallo al cargar', src); tryLoad(); };
+                document.body.appendChild(s);
+            }
+            tryLoad();
+        })();
+    </script>
+    <script>
+        // Ajusta dinámicamente los enlaces absolutos para soportar despliegues en subdirectorios de XAMPP
+        (function() {
+            const basePath = (function() {
+                try {
+                    const pathname = window.location.pathname;
+                    const parts = pathname.split('/');
+                    const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+                    while (parts.length > 0) {
+                        const last = parts[parts.length - 1];
+                        if (last === '' || knownPages.includes(last)) {
+                            parts.pop();
+                        } else {
+                            break;
+                        }
+                    }
+                    return parts.join('/');
+                } catch (e) {
+                    return '';
+                }
+            })();
+            if (basePath) {
+                const correctLinks = () => {
+                    document.querySelectorAll('a[href^="/"]').forEach(el => {
+                        const href = el.getAttribute('href');
+                        if (!href.startsWith('//')) {
+                            el.setAttribute('href', basePath + (href === '/' ? '' : href));
+                        }
+                    });
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', correctLinks);
+                } else {
+                    correctLinks();
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

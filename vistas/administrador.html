@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Turnos Ya</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #f5f8fa; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1e293b;
+        }
+        .navbar-custom {
+            background-color: #009ee3; /* Celeste */
+            box-shadow: 0 4px 12px rgba(0, 158, 227, 0.08);
+        }
+        .card { 
+            border-radius: 14px; 
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.02);
+            background-color: #ffffff;
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(0, 158, 227, 0.04);
+        }
+        .card-header-toggle { 
+            font-weight: 700; 
+            font-size: 1.05rem;
+            color: #0f172a;
+            background-color: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 18px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background-color 0.2s ease;
+        }
+        .card-header-toggle:hover {
+            background-color: #f8fafc;
+        }
+        .card-header-toggle .toggle-icon {
+            font-size: 0.85rem;
+            transition: transform 0.25s ease;
+            color: #009ee3;
+            background-color: #e6f5fc;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .card-header-toggle[aria-expanded="true"] .toggle-icon {
+            transform: rotate(180deg);
+            background-color: #009ee3;
+            color: #ffffff;
+        }
+        .form-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
+            font-size: 0.95rem;
+            transition: all 0.18s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #009ee3;
+            box-shadow: 0 0 0 3px rgba(0, 158, 227, 0.12);
+            outline: none;
+        }
+        .btn-primary {
+            background-color: #009ee3;
+            border: none;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 11px;
+            transition: all 0.18s ease;
+        }
+        .btn-primary:hover {
+            background-color: #0081bb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 158, 227, 0.15);
+        }
+        .btn-outline-primary {
+            color: #009ee3;
+            border: 1.5px solid #009ee3;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 11px;
+            transition: all 0.18s ease;
+        }
+        .btn-outline-primary:hover {
+            background-color: #009ee3;
+            border-color: #009ee3;
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 158, 227, 0.1);
+        }
+        
+        .agenda-item { 
+            background: #ffffff; 
+            padding: 16px; 
+            border-radius: 10px; 
+            margin-bottom: 12px; 
+            border-left: 5px solid #009ee3; 
+            border-top: 1px solid #f1f5f9;
+            border-right: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.01); 
+        }
+        .badge.bg-success {
+            background-color: #e6f7ed !important;
+            color: #00a650 !important;
+            border: 1px solid #ccefdc;
+            font-weight: 600;
+        }
+        .badge.bg-danger {
+            background-color: #fbebee !important;
+            color: #d93838 !important;
+            border: 1px solid #f6ccd2;
+            font-weight: 600;
+        }
+        .badge.bg-secondary {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 shadow-sm py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand fw-bold fs-4 text-white" href="/pagina-inicio">Turnos Ya</a>
+            <div>
+                <a class="btn btn-light btn-sm fw-bold text-primary px-3 shadow-sm" href="/pagina-inicio" style="border-radius: 8px;">Volver al Inicio</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <!-- Banner de Bienvenida y Cierre de Sesión -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center bg-white p-4 rounded shadow-sm border-start border-primary border-4" style="border-radius: 12px !important;">
+                    <div>
+                        <h4 class="mb-0 text-dark fw-bold" id="welcomeUser">Cargando panel...</h4>
+                        <small id="roleBadge" class="badge mt-2 fs-6 px-3 py-2">...</small>
+                    </div>
+                    <button id="logoutBtn" class="btn btn-outline-danger btn-sm fw-semibold px-4 py-2" style="border-radius: 8px;">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <!-- Registrar negocio -->
+                <div class="card">
+                    <div class="card-header-toggle" data-bs-toggle="collapse" data-bs-target="#collapseBusiness" aria-expanded="true" aria-controls="collapseBusiness">
+                        <span>Registrar nuevo negocio</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="collapseBusiness" class="collapse show">
+                        <div class="card-body p-4">
+                            <form id="businessForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre del negocio</label>
+                                    <input type="text" name="businessName" class="form-control" placeholder="Ej. Barbería Central" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea name="businessDescription" class="form-control" placeholder="Descripción breve..." rows="2"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Dirección comercial</label>
+                                    <input type="text" name="businessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Enlace del Logo (URL)</label>
+                                    <input type="url" name="businessLogoUrl" class="form-control" placeholder="Ej. https://tuservicio.com/logo.png">
+                                </div>
+                                <div class="mb-3">
+                                    <small class="text-muted">El dueño será el usuario de la sesión activa.</small>
+                                </div>
+                                <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Guardar negocio</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editar información del negocio -->
+                <div class="card">
+                    <div class="card-header-toggle" data-bs-toggle="collapse" data-bs-target="#collapseEditBusiness" aria-expanded="false" aria-controls="collapseEditBusiness">
+                        <span>Editar información de mi negocio</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="collapseEditBusiness" class="collapse">
+                        <div class="card-body p-4">
+                            <form id="editBusinessForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Seleccionar negocio a editar</label>
+                                    <select id="editBusinessId" name="editBusinessId" class="form-select" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre del negocio</label>
+                                    <input type="text" id="editBusinessName" name="editBusinessName" class="form-control" placeholder="Ej. Barbería Central" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea id="editBusinessDescription" name="editBusinessDescription" class="form-control" placeholder="Descripción breve..." rows="2"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Dirección comercial</label>
+                                    <input type="text" id="editBusinessAddress" name="editBusinessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label">Enlace del Logo (URL)</label>
+                                    <input type="url" id="editBusinessLogoUrl" name="editBusinessLogoUrl" class="form-control" placeholder="Ej. https://tuservicio.com/logo.png">
+                                </div>
+                                <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Actualizar negocio</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crear servicio -->
+                <div class="card">
+                    <div class="card-header-toggle" data-bs-toggle="collapse" data-bs-target="#collapseService" aria-expanded="false" aria-controls="collapseService">
+                        <span>Registrar nuevo servicio</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="collapseService" class="collapse">
+                        <div class="card-body p-4">
+                            <form id="serviceForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Seleccionar negocio</label>
+                                    <select id="serviceBusinessId" name="serviceBusinessId" class="form-select" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre del servicio</label>
+                                    <input type="text" name="serviceName" class="form-control" placeholder="Ej. Corte clásico" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea name="serviceDescription" class="form-control" placeholder="Ej. Lavado y corte con navaja..." rows="2"></textarea>
+                                </div>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-6">
+                                        <label class="form-label small">Duración (minutos)</label>
+                                        <input type="number" name="serviceDuration" class="form-control" placeholder="Ej. 30" value="30" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Precio ($)</label>
+                                        <input type="number" step="0.01" name="servicePrice" class="form-control" placeholder="1500.00" required>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Guardar servicio</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <!-- Definir horario -->
+                <div class="card">
+                    <div class="card-header-toggle" data-bs-toggle="collapse" data-bs-target="#collapseSchedule" aria-expanded="false" aria-controls="collapseSchedule">
+                        <span>Definir horario de atención</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="collapseSchedule" class="collapse">
+                        <div class="card-body p-4">
+                            <form id="scheduleForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Seleccionar negocio</label>
+                                    <select id="scheduleBusinessId" name="scheduleBusinessId" class="form-select" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Día de la semana</label>
+                                    <select name="scheduleDay" class="form-select">
+                                        <option value="1">Lunes</option><option value="2">Martes</option>
+                                        <option value="3">Miércoles</option><option value="4">Jueves</option>
+                                        <option value="5">Viernes</option><option value="6">Sábado</option>
+                                        <option value="7">Domingo</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label">Horario de apertura y cierre</label>
+                                    <div class="d-flex gap-3">
+                                        <input type="time" name="scheduleStart" class="form-control" value="09:00" required>
+                                        <input type="time" name="scheduleEnd" class="form-control" value="18:00" required>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Guardar horario</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gestión de agenda -->
+                <div class="card">
+                    <div class="card-header-toggle" data-bs-toggle="collapse" data-bs-target="#collapseAgenda" aria-expanded="true" aria-controls="collapseAgenda">
+                        <span>Gestión de agenda</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="collapseAgenda" class="collapse show">
+                        <div class="card-body p-4">
+                            <div class="mb-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Seleccionar negocio</label>
+                                    <select id="agendaBusinessId" class="form-select" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Fecha de agenda</label>
+                                    <input type="date" id="agendaDate" class="form-control">
+                                </div>
+                                <button id="loadAgenda" class="btn btn-outline-primary w-100 fw-bold shadow-sm">Cargar agenda del día</button>
+                            </div>
+                            <hr class="text-muted">
+                            <div id="agendaResult" class="mt-3">
+                                <p class="text-muted text-center small">Selecciona un negocio y fecha para visualizar la agenda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const pageBasePath = (function() {
+            try {
+                const pathname = window.location.pathname;
+                const parts = pathname.split('/');
+                const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+                while (parts.length > 0) {
+                    const last = parts[parts.length - 1];
+                    if (last === '' || knownPages.includes(last)) {
+                        parts.pop();
+                    } else {
+                        break;
+                    }
+                }
+                return parts.join('/');
+            } catch (e) {
+                return '';
+            }
+        })();
+
+        // Cargar dinámicamente el archivo JS
+        const scriptEl = document.createElement('script');
+        scriptEl.src = pageBasePath + '/js/dashboard.js?v=' + Date.now();
+        scriptEl.defer = true;
+        document.body.appendChild(scriptEl);
+
+        // Corrige los destinos de los enlaces absolutos dinámicamente
+        if (pageBasePath) {
+            const correctLinks = () => {
+                document.querySelectorAll('a[href^="/"]').forEach(el => {
+                    const href = el.getAttribute('href');
+                    if (!href.startsWith('//')) {
+                        el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
+                    }
+                });
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', correctLinks);
+            } else {
+                correctLinks();
+            }
+        }
+    </script>
+</body>
+</html>
+

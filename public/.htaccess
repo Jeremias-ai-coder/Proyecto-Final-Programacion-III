@@ -1,0 +1,8 @@
+RewriteEngine On
+
+# No reescribir archivos o carpetas reales
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Todas las rutas no existentes van a index.php
+RewriteRule ^ index.php [L,QSA]

@@ -1,0 +1,6 @@
+.env
+/vendor/
+/composer.phar
+*.log
+.system_generated/
+/test_route.php
