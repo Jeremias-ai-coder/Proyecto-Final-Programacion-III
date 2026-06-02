@@ -147,6 +147,15 @@ async function init() {
     const closeAppointmentsBtn = document.getElementById('closeAppointmentsBtn');
     const appointmentsList = document.getElementById('appointmentsList');
 
+    // Restringir el date picker para no seleccionar fechas pasadas
+    if (bookingDate) {
+        const localNow = new Date();
+        const y = localNow.getFullYear();
+        const m = String(localNow.getMonth() + 1).padStart(2, '0');
+        const d = String(localNow.getDate()).padStart(2, '0');
+        bookingDate.min = `${y}-${m}-${d}`;
+    }
+
     let businesses = await fetchBusinesses();
 
     // Notificación flotante rápida si recién creó un negocio
@@ -224,7 +233,12 @@ async function init() {
             logoutBtn.type = 'button';
             logoutBtn.className = 'btn btn-outline-danger btn-sm fw-semibold text-white border-white px-3 ms-2';
             logoutBtn.innerText = 'Cerrar Sesión';
-            logoutBtn.addEventListener('click', () => {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await fetch(`${apiUrl}/logout`, { method: 'POST' });
+                } catch (e) {
+                    console.error('Error closing session on server', e);
+                }
                 localStorage.clear();
                 alert('Sesión cerrada con éxito.');
                 window.location.reload();
@@ -274,6 +288,18 @@ async function init() {
             return;
         }
 
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayLocal = `${year}-${month}-${day}`;
+
+        if (date < todayLocal) {
+            timeSlotsContainer.style.display = 'block';
+            timeSlotsContainer.innerHTML = '<div class="alert alert-warning py-2 text-center small fw-semibold">No se pueden agendar turnos en el pasado.</div>';
+            return;
+        }
+
         timeSlotsContainer.style.display = 'block';
         timeSlotsContainer.innerHTML = '<div class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm me-2 text-primary" role="status"></div>Calculando horarios disponibles...</div>';
 
@@ -309,6 +335,7 @@ async function init() {
             }
 
             const slots = [];
+            const addedSlots = new Set();
             const slotStep = 30; // Intervalo entre inicio de turnos (30 minutos)
 
             // Para cada jornada laboral de ese día de la semana
@@ -318,7 +345,18 @@ async function init() {
 
                 // Generamos franjas horarias
                 for (let timeMin = startMin; timeMin + duration <= endMin; timeMin += slotStep) {
+                    // Si es hoy, evitar franjas que ya pasaron
+                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                    if (date === todayLocal && timeMin <= currentMinutes) {
+                        continue;
+                    }
+
                     const slotStartStr = minutesToTime(timeMin);
+
+                    // Evitar duplicar horarios si hay configuraciones de horarios repetidas o solapadas
+                    if (addedSlots.has(slotStartStr)) {
+                        continue;
+                    }
 
                     // VALIDACIÓN DE COLISIÓN O SOLAPAMIENTO: Comprobamos si cruza con alguna reserva previa activa
                     let isOccupied = false;
@@ -340,6 +378,7 @@ async function init() {
                         time: slotStartStr,
                         isOccupied
                     });
+                    addedSlots.add(slotStartStr);
                 }
             }
 

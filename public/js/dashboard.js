@@ -53,6 +53,11 @@ function bindForm(formId, route, successMessage, extraMapper = (body) => body, o
     form.addEventListener('submit', async (event) => {
         event.preventDefault(); // Evitamos la recarga por defecto de la página
         
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
+        
         const formData = new FormData(form);
         const body = {};
         for (const [key, value] of formData.entries()) {
@@ -65,25 +70,34 @@ function bindForm(formId, route, successMessage, extraMapper = (body) => body, o
         // Validaciones previas en el cliente
         if (payload.hasOwnProperty('owner_id') && (!payload.owner_id || isNaN(payload.owner_id))) {
             alert('Debes iniciar sesión como dueño para crear un negocio.');
+            if (submitBtn) submitBtn.disabled = false;
             return;
         }
         
         if (payload.hasOwnProperty('business_id') && !payload.business_id) {
             alert('Por favor selecciona un negocio válido.');
+            if (submitBtn) submitBtn.disabled = false;
             return;
         }
 
-        // Enviamos la petición a la API
-        const res = await request(route, 'POST', payload);
-        let data = null;
-        try { data = await res.json(); } catch (e) { data = null; }
-        
-        if (res.ok) {
-            alert(successMessage + (data && data.id ? (": " + data.id) : ''));
-            form.reset(); // Limpiamos los campos
-            if (typeof onSuccess === 'function') onSuccess(data); // Ejecutamos callback si existe
-        } else {
-            alert('Error: ' + (data && data.message ? data.message : res.statusText));
+        try {
+            // Enviamos la petición a la API
+            const res = await request(route, 'POST', payload);
+            let data = null;
+            try { data = await res.json(); } catch (e) { data = null; }
+            
+            if (res.ok) {
+                alert(successMessage + (data && data.id ? (": " + data.id) : ''));
+                form.reset(); // Limpiamos los campos
+                if (typeof onSuccess === 'function') onSuccess(data); // Ejecutamos callback si existe
+            } else {
+                alert('Error: ' + (data && data.message ? data.message : res.statusText));
+            }
+        } catch (error) {
+            console.error('Error submitting form', error);
+            alert('Error de conexión con el servidor.');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
         }
     });
 }
@@ -263,7 +277,12 @@ async function initDashboard() {
     
     // B. Vincular el botón de Cerrar Sesión del banner
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch(`${apiUrl}/logout`, { method: 'POST' });
+            } catch (e) {
+                console.error('Error closing session on server', e);
+            }
             localStorage.clear(); // Limpiamos todos los datos guardados en navegador
             alert('Sesión cerrada correctamente.');
             window.location.href = pageBasePath + '/login';

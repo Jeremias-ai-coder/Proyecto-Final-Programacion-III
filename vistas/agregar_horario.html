@@ -221,6 +221,8 @@
                 if (!btn || !form) return;
                 btn.addEventListener('click', async function(ev){
                     ev.preventDefault();
+                    if (btn.disabled) return;
+
                     if (!localStorage.getItem('pendingBusiness')) {
                         if (info) info.innerHTML = '<div class="alert alert-warning py-2 small text-center">No hay datos del negocio. Volviendo...</div>';
                         setTimeout(()=> window.location.href = pageBasePath + '/crear-negocio', 900);
@@ -239,6 +241,10 @@
                         if (msg) { msg.textContent = 'Debes completar el horario de atención.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
                         return;
                     }
+
+                    btn.disabled = true;
+                    btn.innerText = 'Guardando...';
+
                     try {
                         const payload = {
                             name: pending.name,
@@ -261,10 +267,14 @@
                             setTimeout(()=> window.location.href = pageBasePath + '/pagina-inicio', 900);
                         } else {
                             if (msg) { msg.textContent = (result && result.message) ? result.message : 'Error guardando horario.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
+                            btn.disabled = false;
+                            btn.innerText = 'Guardar y Publicar';
                         }
                     } catch (err) {
                         console.error('Network error', err);
                         if (msg) { msg.textContent = 'Error de red. Reintenta más tarde.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
+                        btn.disabled = false;
+                        btn.innerText = 'Guardar y Publicar';
                     }
                 });
             } catch (e) { console.error('Fallback agregar_horario error', e); }

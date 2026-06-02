@@ -268,12 +268,31 @@ switch ($route) {
                 jsonResponse(['message' => 'Correo electrónico o contraseña incorrectos'], 401);
             }
 
+            $_SESSION['user_id'] = $user->id;
+            $_SESSION['user_role'] = $user->role;
+            $_SESSION['user_name'] = $user->name;
+
             jsonResponse([
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
             ]);
+        }
+        break;
+
+    case 'logout':
+        if ($method === 'POST') {
+            $_SESSION = [];
+            if (ini_get("session.use_cookies")) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000,
+                    $params["path"], $params["domain"],
+                    $params["secure"], $params["httponly"]
+                );
+            }
+            session_destroy();
+            jsonResponse(['message' => 'Sesión cerrada']);
         }
         break;
 
@@ -333,6 +352,17 @@ switch ($route) {
                 jsonResponse(['message' => 'Formato de hora inválido (HH:MM)'], 400);
             }
 
+            // Evitar duplicar exactamente la misma entrada de horario
+            $exists = WorkSchedule::where('business_id', $businessId)
+                ->where('day_of_week', $day)
+                ->where('start_time', $start)
+                ->where('end_time', $end)
+                ->first();
+
+            if ($exists) {
+                jsonResponse($exists, 200);
+            }
+
             $schedule = WorkSchedule::create([
                 'business_id' => $businessId,
                 'day_of_week' => $day,
@@ -368,9 +398,9 @@ switch ($route) {
 
     case 'appointments':
         if ($method === 'GET') {
-            $userId = isset($_GET['user_id']) ? sanitizeInt($_GET['user_id']) : null;
+            $userId = $_SESSION['user_id'] ?? null;
             if (!$userId) {
-                jsonResponse(['message' => 'user_id es obligatorio'], 400);
+                jsonResponse(['message' => 'Inicie sesión para ver sus turnos.'], 401);
             }
             $appointments = Appointment::with(['business', 'service'])
                 ->where('user_id', $userId)
@@ -383,12 +413,16 @@ switch ($route) {
         if ($method === 'POST') {
             $businessId = sanitizeInt($input['business_id'] ?? null);
             $serviceId = sanitizeInt($input['service_id'] ?? null);
-            $userId = sanitizeInt($input['user_id'] ?? null);
+            $userId = $_SESSION['user_id'] ?? null;
             $date = sanitizeString($input['date'] ?? date('Y-m-d'));
             $time = sanitizeString($input['time'] ?? '09:00');
 
-            if (!$businessId || !$serviceId || !$userId) {
-                jsonResponse(['message' => 'business_id, service_id y user_id son obligatorios'], 400);
+            if (!$userId) {
+                jsonResponse(['message' => 'Inicie sesión para reservar un turno.'], 401);
+            }
+
+            if (!$businessId || !$serviceId) {
+                jsonResponse(['message' => 'business_id y service_id son obligatorios'], 400);
             }
             
             $business = Business::find($businessId);
@@ -402,6 +436,15 @@ switch ($route) {
                 jsonResponse(['message' => 'Fecha o hora en formato inválido'], 400);
             }
 
+            $duration = $service->duration_minutes ?? 30;
+            $reqStart = strtotime($date . ' ' . $time);
+            $reqEnd = strtotime("+{$duration} minutes", $reqStart);
+
+            // Validar que el turno no sea en el pasado
+            if ($reqStart < time()) {
+                jsonResponse(['message' => 'No puedes agendar un turno en una fecha u hora que ya ha pasado.'], 400);
+            }
+
             // 1. Validar horario de atención del negocio
             $dayOfWeek = date('N', strtotime($date));
             $schedule = WorkSchedule::where('business_id', $businessId)
@@ -411,10 +454,6 @@ switch ($route) {
             if (!$schedule) {
                 jsonResponse(['message' => 'El negocio no atiende en el día seleccionado.'], 400);
             }
-
-            $duration = $service->duration_minutes ?? 30;
-            $reqStart = strtotime($date . ' ' . $time);
-            $reqEnd = strtotime("+{$duration} minutes", $reqStart);
 
             $schedStart = strtotime($date . ' ' . $schedule->start_time);
             $schedEnd = strtotime($date . ' ' . $schedule->end_time);
@@ -467,6 +506,12 @@ switch ($route) {
             $appointment = Appointment::find($id);
             if (!$appointment) {
                 jsonResponse(['message' => 'Turno no encontrado'], 404);
+            }
+
+            // Validar que el turno pertenezca al usuario de la sesión actual
+            $sessionUserId = $_SESSION['user_id'] ?? null;
+            if ($appointment->user_id !== $sessionUserId) {
+                jsonResponse(['message' => 'No autorizado para cancelar este turno.'], 403);
             }
 
             if ($appointment->status === 'cancelled') {
