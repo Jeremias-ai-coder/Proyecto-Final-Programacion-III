@@ -79,14 +79,15 @@ switch ($route) {
             $description = sanitizeString($input['description'] ?? '');
             $address = sanitizeString($input['address'] ?? '');
             $logoUrl = sanitizeString($input['logo_url'] ?? '');
-            $ownerId = sanitizeInt($input['owner_id'] ?? null);
+            
+            $ownerId = $_SESSION['user_id'] ?? null;
 
             if ($name === '') {
                 jsonResponse(['message' => 'El nombre es obligatorio'], 400);
             }
 
             if ($ownerId === null || !User::find($ownerId)) {
-                jsonResponse(['message' => 'Owner_id inválido o no existe'], 400);
+                jsonResponse(['message' => 'Inicie sesión para registrar un negocio.'], 401);
             }
 
             $business = Business::create([
@@ -101,6 +102,9 @@ switch ($route) {
             if ($ownerUser && $ownerUser->role === 'client') {
                 $ownerUser->role = 'owner';
                 $ownerUser->save();
+                if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $ownerId) {
+                    $_SESSION['user_role'] = 'owner';
+                }
             }
 
             jsonResponse($business, 201);
@@ -140,6 +144,40 @@ switch ($route) {
 
             jsonResponse($business);
         }
+        if ($method === 'DELETE') {
+            $id = $_GET['id'] ?? null;
+            if (!$id) {
+                jsonResponse(['message' => 'Falta el id del negocio'], 400);
+            }
+            $business = Business::find($id);
+            if (!$business) {
+                jsonResponse(['message' => 'Negocio no encontrado'], 404);
+            }
+
+            // Validar permisos: debe ser el dueño del negocio o un administrador
+            $userId = $_SESSION['user_id'] ?? null;
+            $userRole = $_SESSION['user_role'] ?? null;
+            if ($business->owner_id !== $userId && $userRole !== 'administrator') {
+                jsonResponse(['message' => 'No tienes permisos para eliminar este negocio.'], 403);
+            }
+
+            $business->delete();
+
+            // Si el dueño ya no tiene más negocios, volver su rol a 'client'
+            if ($userId && $userRole === 'owner') {
+                $hasOther = Business::where('owner_id', $userId)->exists();
+                if (!$hasOther) {
+                    $user = User::find($userId);
+                    if ($user) {
+                        $user->role = 'client';
+                        $user->save();
+                        $_SESSION['user_role'] = 'client';
+                    }
+                }
+            }
+
+            jsonResponse(['message' => 'Negocio eliminado correctamente', 'role' => $_SESSION['user_role'] ?? 'client']);
+        }
         break;
 
     case 'businesses-with-schedule':
@@ -148,7 +186,9 @@ switch ($route) {
             $description = sanitizeString($input['description'] ?? '');
             $address = sanitizeString($input['address'] ?? '');
             $logoUrl = sanitizeString($input['logo_url'] ?? '');
-            $ownerId = sanitizeInt($input['owner_id'] ?? null);
+            
+            $ownerId = $_SESSION['user_id'] ?? null;
+            
             $startDay = sanitizeInt($input['start_day'] ?? null);
             $endDay = sanitizeInt($input['end_day'] ?? null);
             $startTime = sanitizeString($input['start_time'] ?? '');
@@ -158,7 +198,7 @@ switch ($route) {
                 jsonResponse(['message' => 'El nombre es obligatorio'], 400);
             }
             if ($ownerId === null || !User::find($ownerId)) {
-                jsonResponse(['message' => 'Owner_id inválido o no existe'], 400);
+                jsonResponse(['message' => 'Inicie sesión para registrar un negocio.'], 401);
             }
             if ($startDay === null || $endDay === null || $startDay < 1 || $startDay > 7 || $endDay < 1 || $endDay > 7 || $endDay < $startDay) {
                 jsonResponse(['message' => 'Rango de días inválido'], 400);
@@ -191,6 +231,9 @@ switch ($route) {
             if ($ownerUser && $ownerUser->role === 'client') {
                 $ownerUser->role = 'owner';
                 $ownerUser->save();
+                if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $ownerId) {
+                    $_SESSION['user_role'] = 'owner';
+                }
             }
 
             $business->load(['owner', 'services', 'workSchedules']);

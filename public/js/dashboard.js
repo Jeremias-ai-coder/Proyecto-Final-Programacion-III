@@ -212,6 +212,7 @@ async function loadBusinessesInto(...sels) {
 
         function fill(sel) {
             if (!sel) return;
+            sel.disabled = false; // Habilitar por defecto
             sel.innerHTML = '';
 
             // Si el dueño no tiene negocios creados
@@ -414,6 +415,7 @@ document.addEventListener('businessesUpdated', (e) => {
     
     function fill(sel) {
         if (!sel) return;
+        sel.disabled = false; // Habilitar por defecto
         sel.innerHTML = '';
         
         if (businesses.length === 0) {

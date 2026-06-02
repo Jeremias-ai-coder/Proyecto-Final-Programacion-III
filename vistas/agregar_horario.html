@@ -262,6 +262,9 @@
                         try { result = await res.json(); } catch(e) { console.error('Parse error', e); }
                         if (res.ok) {
                             if (msg) { msg.textContent = 'Negocio y horario guardados correctamente.'; msg.className='alert alert-success py-2 small text-center'; msg.classList.remove('d-none'); }
+                            if (result && result.owner && result.owner.role) {
+                                localStorage.setItem('userRole', result.owner.role);
+                            }
                             try { localStorage.setItem('pendingCreatedBusiness', JSON.stringify(result)); } catch(e){}
                             localStorage.removeItem('pendingBusiness');
                             setTimeout(()=> window.location.href = pageBasePath + '/pagina-inicio', 900);

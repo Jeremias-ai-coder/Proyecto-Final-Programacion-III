@@ -74,6 +74,9 @@ function renderBusinessCards(items) {
         return;
     }
     
+    const userId = localStorage.getItem('userId');
+    const userRole = localStorage.getItem('userRole');
+    
     for (const business of items) {
         const card = document.createElement('div');
         card.className = 'col-sm-6 col-md-4 col-lg-3';
@@ -89,8 +92,33 @@ function renderBusinessCards(items) {
             ? `<p class="mb-2 small text-muted text-truncate" title="${business.address}"><span class="me-1">📍</span>${business.address}</p>`
             : `<p class="mb-2 small text-muted text-truncate text-secondary italic">📍 Dirección no especificada</p>`;
         
+        const isOwnerOrAdmin = (userId && (business.owner_id == userId || userRole === 'administrator'));
+        let dropdownHtml = '';
+        if (isOwnerOrAdmin) {
+            dropdownHtml = `
+                <div class="dropdown position-absolute top-0 end-0 m-3" style="z-index: 10;">
+                    <button class="btn btn-link text-secondary p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; text-decoration: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-three-dots-vertical" viewBox="0 0 16 16" style="color: #475569;">
+                            <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                        </svg>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-1" style="border-radius: 8px; font-size: 0.88rem; min-width: 140px; margin-top: 4px;">
+                        <li>
+                            <button type="button" class="dropdown-item text-danger fw-semibold d-flex align-items-center gap-2 btn-delete-business" data-business-id="${business.id}" data-business-name="${business.name}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5Zm-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5ZM4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Zm6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528ZM8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5Z"/>
+                                </svg>
+                                Eliminar
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            `;
+        }
+        
         card.innerHTML = `
             <div class="ml-card h-100 d-flex flex-column shadow-sm">
+                ${dropdownHtml}
                 <div class="ml-image">
                     <div style="width: 72px; height: 72px; display: flex; align-items: center; justify-content: center;">
                         ${logoContent}
@@ -266,10 +294,53 @@ async function init() {
         if (!business) return;
         if (!userId) {
             alert('Debes iniciar sesión para agendar un turno.');
+            window.location.href = pageBasePath + '/login';
             return;
         }
         await prepareBooking(business);
         reserveSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // Escuchar click en el botón de eliminar negocio de una tarjeta
+    businessGrid.addEventListener('click', async (event) => {
+        const btn = event.target.closest('.btn-delete-business');
+        if (!btn) return;
+
+        event.stopPropagation();
+        event.preventDefault();
+
+        const businessId = btn.dataset.businessId;
+        const businessName = btn.dataset.businessName || 'este negocio';
+
+        const warningMsg = `¡CUIDADO! ¿Estás seguro de que deseas eliminar permanentemente el negocio "${businessName}"?\n\nEsta acción eliminará todos los turnos agendados, servicios y horarios del negocio, y es irreversible.`;
+        
+        if (!confirm(warningMsg)) {
+            return;
+        }
+
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`${apiUrl}/businesses?id=${businessId}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                alert('Negocio eliminado correctamente.');
+                if (data.role) {
+                    localStorage.setItem('userRole', data.role);
+                }
+                window.location.reload();
+            } else {
+                alert('No se pudo eliminar el negocio: ' + (data.message || 'Error desconocido'));
+                btn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error al intentar eliminar el negocio:', error);
+            alert('Error de conexión. Por favor inténtalo de nuevo.');
+            btn.disabled = false;
+        }
     });
 
     // 6. CÁLCULO E INYECCIÓN DE INTERVALOS HORARIOS DISPONIBLES (SLOTS)

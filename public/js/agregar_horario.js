@@ -112,13 +112,16 @@ function initAgregarHorario() {
 
             if (res.ok) {
                 showScheduleMessage('Negocio y horario guardados correctamente.', 'success');
-            // Guardar el negocio retornado para que la página de inicio lo muestre inmediatamente
-            try {
-                localStorage.setItem('pendingCreatedBusiness', JSON.stringify(result));
-            } catch (e) { console.warn('No se pudo guardar en localStorage', e); }
-            localStorage.removeItem('pendingBusiness');
-            // Redirigir tras breve pausa
-            setTimeout(() => { window.location.href = pageBasePath + '/pagina-inicio'; }, 900);
+                if (result && result.owner && result.owner.role) {
+                    localStorage.setItem('userRole', result.owner.role);
+                }
+                // Guardar el negocio retornado para que la página de inicio lo muestre inmediatamente
+                try {
+                    localStorage.setItem('pendingCreatedBusiness', JSON.stringify(result));
+                } catch (e) { console.warn('No se pudo guardar en localStorage', e); }
+                localStorage.removeItem('pendingBusiness');
+                // Redirigir tras breve pausa
+                setTimeout(() => { window.location.href = pageBasePath + '/pagina-inicio'; }, 900);
         } else {
             showScheduleMessage(result.message || 'Error al guardar el horario.', 'danger');
         }
