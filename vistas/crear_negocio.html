@@ -183,78 +183,80 @@
     </div>
 
     <script>
-        const pageBasePath = (function() {
-            try {
-                const pathname = window.location.pathname;
-                const parts = pathname.split('/');
-                const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
-                while (parts.length > 0) {
-                    const last = parts[parts.length - 1];
-                    if (last === '' || knownPages.includes(last)) {
-                        parts.pop();
-                    } else {
-                        break;
+        (function() {
+            const pageBasePath = (function() {
+                try {
+                    const pathname = window.location.pathname;
+                    const parts = pathname.split('/');
+                    const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+                    while (parts.length > 0) {
+                        const last = parts[parts.length - 1];
+                        if (last === '' || knownPages.includes(last)) {
+                            parts.pop();
+                        } else {
+                            break;
+                        }
                     }
+                    return parts.join('/');
+                } catch (e) {
+                    return '';
                 }
-                return parts.join('/');
-            } catch (e) {
-                return '';
-            }
-        })();
+            })();
 
-        // Cargar dinámicamente el archivo JS
-        const scriptEl = document.createElement('script');
-        scriptEl.src = pageBasePath + '/js/crear_negocio.js?v=' + Date.now();
-        scriptEl.defer = true;
-        document.body.appendChild(scriptEl);
+            // Cargar dinámicamente el archivo JS
+            const scriptEl = document.createElement('script');
+            scriptEl.src = pageBasePath + '/js/crear_negocio.js?v=' + Date.now();
+            scriptEl.defer = true;
+            document.body.appendChild(scriptEl);
 
-        // Corrige los destinos de los enlaces absolutos dinámicamente
-        if (pageBasePath) {
-            const correctLinks = () => {
-                document.querySelectorAll('a[href^="/"]').forEach(el => {
-                    const href = el.getAttribute('href');
-                    if (!href.startsWith('//')) {
-                        el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
-                    }
-                });
-            };
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', correctLinks);
-            } else {
-                correctLinks();
+            // Corrige los destinos de los enlaces absolutos dinámicamente
+            if (pageBasePath) {
+                const correctLinks = () => {
+                    document.querySelectorAll('a[href^="/"]').forEach(el => {
+                        const href = el.getAttribute('href');
+                        if (!href.startsWith('//')) {
+                            el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
+                        }
+                    });
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', correctLinks);
+                } else {
+                    correctLinks();
+                }
             }
-        }
 
-        // Fallback inline handler: asegura redireccionamiento correcto
-        (function(){
-            try {
-                const btn = document.getElementById('nextToSchedule');
-                const form = document.getElementById('createBusinessForm');
-                if (!btn || !form) return;
-                btn.addEventListener('click', function(ev){
-                    ev.preventDefault();
-                    var name = (form.elements['businessName'] || {}).value || '';
-                    var description = (form.elements['businessDescription'] || {}).value || '';
-                    var address = (form.elements['businessAddress'] || {}).value || '';
-                    var logoUrl = (form.elements['businessLogoUrl'] || {}).value || '';
-                    if (!name.trim()) {
-                        var m = document.getElementById('businessMessage');
-                        if (m) { m.textContent = 'El nombre del negocio es obligatorio.'; m.className = 'alert alert-danger py-2 small text-center'; m.classList.remove('d-none'); }
-                        return;
-                    }
-                    var pending = { 
-                        name: name.trim(), 
-                        description: description.trim(), 
-                        address: address.trim(),
-                        logo_url: logoUrl.trim(),
-                        owner_id: parseInt(localStorage.getItem('userId') || '0', 10) 
-                    };
-                    localStorage.setItem('pendingBusiness', JSON.stringify(pending));
-                    window.location.href = pageBasePath + '/agregar-horario';
-                });
-            } catch (e) {
-                console.error('Fallback handler error', e);
-            }
+            // Fallback inline handler: asegura redireccionamiento correcto
+            (function(){
+                try {
+                    const btn = document.getElementById('nextToSchedule');
+                    const form = document.getElementById('createBusinessForm');
+                    if (!btn || !form) return;
+                    btn.addEventListener('click', function(ev){
+                        ev.preventDefault();
+                        var name = (form.elements['businessName'] || {}).value || '';
+                        var description = (form.elements['businessDescription'] || {}).value || '';
+                        var address = (form.elements['businessAddress'] || {}).value || '';
+                        var logoUrl = (form.elements['businessLogoUrl'] || {}).value || '';
+                        if (!name.trim()) {
+                            var m = document.getElementById('businessMessage');
+                            if (m) { m.textContent = 'El nombre del negocio es obligatorio.'; m.className = 'alert alert-danger py-2 small text-center'; m.classList.remove('d-none'); }
+                            return;
+                        }
+                        var pending = { 
+                            name: name.trim(), 
+                            description: description.trim(), 
+                            address: address.trim(),
+                            logo_url: logoUrl.trim(),
+                            owner_id: parseInt(localStorage.getItem('userId') || '0', 10) 
+                        };
+                        localStorage.setItem('pendingBusiness', JSON.stringify(pending));
+                        window.location.href = pageBasePath + '/agregar-horario';
+                    });
+                } catch (e) {
+                    console.error('Fallback handler error', e);
+                }
+            })();
         })();
     </script>
 </body>

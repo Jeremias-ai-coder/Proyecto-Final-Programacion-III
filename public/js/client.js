@@ -211,19 +211,12 @@ async function init() {
     if (dynamicNavButtons) {
         dynamicNavButtons.innerHTML = '';
         if (!userId) {
-            // Visitante Anónimo
             const loginBtn = document.createElement('a');
             loginBtn.className = 'btn btn-light btn-sm fw-semibold text-primary px-3';
             loginBtn.href = pageBasePath + '/login';
             loginBtn.innerText = 'Iniciar Sesión';
             
-            const registerBizBtn = document.createElement('a');
-            registerBizBtn.className = 'btn btn-outline-light btn-sm fw-semibold px-3';
-            registerBizBtn.href = pageBasePath + '/crear-negocio';
-            registerBizBtn.innerText = 'Ofrecer mis servicios';
-            
             dynamicNavButtons.appendChild(loginBtn);
-            dynamicNavButtons.appendChild(registerBizBtn);
         } else {
             // Usuario con sesión iniciada
             if (userRole === 'owner') {

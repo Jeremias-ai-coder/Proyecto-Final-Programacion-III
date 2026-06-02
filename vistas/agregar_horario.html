@@ -165,122 +165,124 @@
     </div>
 
     <script>
-        const pageBasePath = (function() {
-            try {
-                const pathname = window.location.pathname;
-                const parts = pathname.split('/');
-                const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
-                while (parts.length > 0) {
-                    const last = parts[parts.length - 1];
-                    if (last === '' || knownPages.includes(last)) {
-                        parts.pop();
-                    } else {
-                        break;
-                    }
-                }
-                return parts.join('/');
-            } catch (e) {
-                return '';
-            }
-        })();
-
-        // Cargar dinámicamente el archivo JS
-        const scriptEl = document.createElement('script');
-        scriptEl.src = pageBasePath + '/js/agregar_horario.js?v=' + Date.now();
-        scriptEl.defer = true;
-        document.body.appendChild(scriptEl);
-
-        // Corrige los destinos de los enlaces absolutos dinámicamente
-        if (pageBasePath) {
-            const correctLinks = () => {
-                document.querySelectorAll('a[href^="/"]').forEach(el => {
-                    const href = el.getAttribute('href');
-                    if (!href.startsWith('//')) {
-                        el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
-                    }
-                });
-                // También ajustar cualquier enlace relativo de 'crear-negocio' si debía ser absoluto
-                document.querySelectorAll('a[href="crear-negocio"]').forEach(el => {
-                    el.setAttribute('href', pageBasePath + '/crear-negocio');
-                });
-            };
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', correctLinks);
-            } else {
-                correctLinks();
-            }
-        }
-
-        // Inline fallback para asegurar correcto guardado y publicación del negocio
-        (function(){
-            try {
-                const btn = document.getElementById('saveScheduleBtn');
-                const form = document.getElementById('addScheduleForm');
-                const info = document.getElementById('businessInfo');
-                const msg = document.getElementById('scheduleMessage');
-                if (!btn || !form) return;
-                btn.addEventListener('click', async function(ev){
-                    ev.preventDefault();
-                    if (btn.disabled) return;
-
-                    if (!localStorage.getItem('pendingBusiness')) {
-                        if (info) info.innerHTML = '<div class="alert alert-warning py-2 small text-center">No hay datos del negocio. Volviendo...</div>';
-                        setTimeout(()=> window.location.href = pageBasePath + '/crear-negocio', 900);
-                        return;
-                    }
-                    const pending = JSON.parse(localStorage.getItem('pendingBusiness'));
-                    const startDay = parseInt((form.elements['startDay']||{}).value || '1', 10);
-                    const endDay = parseInt((form.elements['endDay']||{}).value || '1', 10);
-                    const startTime = (form.elements['startTime']||{}).value || '';
-                    const endTime = (form.elements['endTime']||{}).value || '';
-                    if (endDay < startDay) {
-                        if (msg) { msg.textContent = 'El día final debe ser igual o posterior al día de inicio.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
-                        return;
-                    }
-                    if (!startTime || !endTime) {
-                        if (msg) { msg.textContent = 'Debes completar el horario de atención.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
-                        return;
-                    }
-
-                    btn.disabled = true;
-                    btn.innerText = 'Guardando...';
-
-                    try {
-                        const payload = {
-                            name: pending.name,
-                            description: pending.description,
-                            address: pending.address || null,
-                            logo_url: pending.logo_url || null,
-                            owner_id: pending.owner_id,
-                            start_day: startDay,
-                            end_day: endDay,
-                            start_time: startTime,
-                            end_time: endTime,
-                        };
-                        const res = await fetch(pageBasePath + '/api/businesses-with-schedule', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-                        let result = {};
-                        try { result = await res.json(); } catch(e) { console.error('Parse error', e); }
-                        if (res.ok) {
-                            if (msg) { msg.textContent = 'Negocio y horario guardados correctamente.'; msg.className='alert alert-success py-2 small text-center'; msg.classList.remove('d-none'); }
-                            if (result && result.owner && result.owner.role) {
-                                localStorage.setItem('userRole', result.owner.role);
-                            }
-                            try { localStorage.setItem('pendingCreatedBusiness', JSON.stringify(result)); } catch(e){}
-                            localStorage.removeItem('pendingBusiness');
-                            setTimeout(()=> window.location.href = pageBasePath + '/pagina-inicio', 900);
+        (function() {
+            const pageBasePath = (function() {
+                try {
+                    const pathname = window.location.pathname;
+                    const parts = pathname.split('/');
+                    const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+                    while (parts.length > 0) {
+                        const last = parts[parts.length - 1];
+                        if (last === '' || knownPages.includes(last)) {
+                            parts.pop();
                         } else {
-                            if (msg) { msg.textContent = (result && result.message) ? result.message : 'Error guardando horario.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
+                            break;
+                        }
+                    }
+                    return parts.join('/');
+                } catch (e) {
+                    return '';
+                }
+            })();
+
+            // Cargar dinámicamente el archivo JS
+            const scriptEl = document.createElement('script');
+            scriptEl.src = pageBasePath + '/js/agregar_horario.js?v=' + Date.now();
+            scriptEl.defer = true;
+            document.body.appendChild(scriptEl);
+
+            // Corrige los destinos de los enlaces absolutos dinámicamente
+            if (pageBasePath) {
+                const correctLinks = () => {
+                    document.querySelectorAll('a[href^="/"]').forEach(el => {
+                        const href = el.getAttribute('href');
+                        if (!href.startsWith('//')) {
+                            el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
+                        }
+                    });
+                    // También ajustar cualquier enlace relativo de 'crear-negocio' si debía ser absoluto
+                    document.querySelectorAll('a[href="crear-negocio"]').forEach(el => {
+                        el.setAttribute('href', pageBasePath + '/crear-negocio');
+                    });
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', correctLinks);
+                } else {
+                    correctLinks();
+                }
+            }
+
+            // Inline fallback para asegurar correcto guardado y publicación del negocio
+            (function(){
+                try {
+                    const btn = document.getElementById('saveScheduleBtn');
+                    const form = document.getElementById('addScheduleForm');
+                    const info = document.getElementById('businessInfo');
+                    const msg = document.getElementById('scheduleMessage');
+                    if (!btn || !form) return;
+                    btn.addEventListener('click', async function(ev){
+                        ev.preventDefault();
+                        if (btn.disabled) return;
+
+                        if (!localStorage.getItem('pendingBusiness')) {
+                            if (info) info.innerHTML = '<div class="alert alert-warning py-2 small text-center">No hay datos del negocio. Volviendo...</div>';
+                            setTimeout(()=> window.location.href = pageBasePath + '/crear-negocio', 900);
+                            return;
+                        }
+                        const pending = JSON.parse(localStorage.getItem('pendingBusiness'));
+                        const startDay = parseInt((form.elements['startDay']||{}).value || '1', 10);
+                        const endDay = parseInt((form.elements['endDay']||{}).value || '1', 10);
+                        const startTime = (form.elements['startTime']||{}).value || '';
+                        const endTime = (form.elements['endTime']||{}).value || '';
+                        if (endDay < startDay) {
+                            if (msg) { msg.textContent = 'El día final debe ser igual o posterior al día de inicio.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
+                            return;
+                        }
+                        if (!startTime || !endTime) {
+                            if (msg) { msg.textContent = 'Debes completar el horario de atención.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
+                            return;
+                        }
+
+                        btn.disabled = true;
+                        btn.innerText = 'Guardando...';
+
+                        try {
+                            const payload = {
+                                name: pending.name,
+                                description: pending.description,
+                                address: pending.address || null,
+                                logo_url: pending.logo_url || null,
+                                owner_id: pending.owner_id,
+                                start_day: startDay,
+                                end_day: endDay,
+                                start_time: startTime,
+                                end_time: endTime,
+                            };
+                            const res = await fetch(pageBasePath + '/api/businesses-with-schedule', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                            let result = {};
+                            try { result = await res.json(); } catch(e) { console.error('Parse error', e); }
+                            if (res.ok) {
+                                if (msg) { msg.textContent = 'Negocio y horario guardados correctamente.'; msg.className='alert alert-success py-2 small text-center'; msg.classList.remove('d-none'); }
+                                if (result && result.owner && result.owner.role) {
+                                    localStorage.setItem('userRole', result.owner.role);
+                                }
+                                try { localStorage.setItem('pendingCreatedBusiness', JSON.stringify(result)); } catch(e){}
+                                localStorage.removeItem('pendingBusiness');
+                                setTimeout(()=> window.location.href = pageBasePath + '/pagina-inicio', 900);
+                            } else {
+                                if (msg) { msg.textContent = (result && result.message) ? result.message : 'Error guardando horario.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
+                                btn.disabled = false;
+                                btn.innerText = 'Guardar y Publicar';
+                            }
+                        } catch (err) {
+                            console.error('Network error', err);
+                            if (msg) { msg.textContent = 'Error de red. Reintenta más tarde.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
                             btn.disabled = false;
                             btn.innerText = 'Guardar y Publicar';
                         }
-                    } catch (err) {
-                        console.error('Network error', err);
-                        if (msg) { msg.textContent = 'Error de red. Reintenta más tarde.'; msg.className='alert alert-danger py-2 small text-center'; msg.classList.remove('d-none'); }
-                        btn.disabled = false;
-                        btn.innerText = 'Guardar y Publicar';
-                    }
-                });
-            } catch (e) { console.error('Fallback agregar_horario error', e); }
+                    });
+                } catch (e) { console.error('Fallback agregar_horario error', e); }
+            })();
         })();
     </script>
 </body>

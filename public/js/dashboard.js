@@ -207,6 +207,10 @@ async function loadBusinessesInto(...sels) {
     
     try {
         const res = await fetch(url);
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`HTTP ${res.status}: ${errText}`);
+        }
         const businesses = await res.json();
         cachedBusinesses = businesses; // Guardar en caché local
 
@@ -224,15 +228,14 @@ async function loadBusinessesInto(...sels) {
                 return;
             }
 
-            // UX INTELIGENTE: Si tiene exactamente un negocio, lo pre-seleccionamos y bloqueamos
+            // UX: Si tiene exactamente un negocio, lo pre-seleccionamos pero lo dejamos activo
             if (businesses.length === 1 && userRole === 'owner') {
                 const b = businesses[0];
                 const opt = document.createElement('option');
                 opt.value = b.id;
-                opt.text = `${b.id} — ${b.name}`;
+                opt.text = b.name;
                 opt.selected = true;
                 sel.appendChild(opt);
-                sel.disabled = true; // Bloqueado por seguridad y agilidad
                 return;
             }
 
@@ -245,7 +248,7 @@ async function loadBusinessesInto(...sels) {
             for (const b of businesses) {
                 const opt = document.createElement('option');
                 opt.value = b.id;
-                opt.text = `${b.id} — ${b.name}`;
+                opt.text = b.name;
                 sel.appendChild(opt);
             }
         }
@@ -254,12 +257,14 @@ async function loadBusinessesInto(...sels) {
         return businesses;
     } catch (e) {
         console.error('Error al cargar negocios en el panel:', e);
+        alert('Error al cargar negocios en el panel: ' + e.message);
         return [];
     }
 }
 
 // 9. INICIALIZACIÓN AL CARGAR LA PÁGINA
 async function initDashboard() {
+
     // A. Mostrar datos de usuario y rol dinámicamente en el banner
     const welcomeUser = document.getElementById('welcomeUser');
     const roleBadge = document.getElementById('roleBadge');
@@ -430,10 +435,9 @@ document.addEventListener('businessesUpdated', (e) => {
             const b = businesses[0];
             const opt = document.createElement('option');
             opt.value = b.id;
-            opt.text = `${b.id} — ${b.name}`;
+            opt.text = b.name;
             opt.selected = true;
             sel.appendChild(opt);
-            sel.disabled = true;
             return;
         }
 
@@ -445,7 +449,7 @@ document.addEventListener('businessesUpdated', (e) => {
         for (const b of businesses) {
             const opt = document.createElement('option');
             opt.value = b.id;
-            opt.text = `${b.id} — ${b.name}`;
+            opt.text = b.name;
             sel.appendChild(opt);
         }
     }

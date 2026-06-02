@@ -40,8 +40,8 @@ function initCrearNegocio() {
     let pendingBusiness = null;
 
     if (!userId) {
-        showBusinessMessage('Debes iniciar sesión para ingresar tu negocio.', 'warning');
-        createForm.querySelector('button[type="submit"]').disabled = true;
+        alert('Debes iniciar sesión para ingresar tu negocio.');
+        window.location.href = pageBasePath + '/login';
         return;
     }
 
