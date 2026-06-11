@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(120) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role ENUM('owner','administrator','client') NOT NULL DEFAULT 'client'
+    role ENUM('owner','administrator','client') NOT NULL DEFAULT 'client',
+    deleted_at TIMESTAMP NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS businesses (

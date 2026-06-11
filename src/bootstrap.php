@@ -26,6 +26,6 @@ $capsule->setEventDispatcher(new Dispatcher(new Container));
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Cargar utilidades de seguridad e inicializar sesión segura
+require_once __DIR__ . '/Security/helpers.php';
+require_once __DIR__ . '/Security/session.php';

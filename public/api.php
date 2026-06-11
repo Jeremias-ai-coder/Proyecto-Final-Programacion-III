@@ -28,40 +28,23 @@ function jsonResponse($data, $status = 200) {
     exit;
 }
 
-// Sanitización y validación básica
-function sanitizeString($value) {
-    if (!isset($value)) return '';
-    return trim(strip_tags((string)$value));
+
+
+
+// Aplicar limitación de tasa (60 solicitudes por minuto por IP)
+$limiter = new \App\Security\RateLimiter(60, 60);
+$clientIp = $limiter->getClientIp();
+$limitCheck = $limiter->check($clientIp);
+
+if (!$limitCheck['allowed']) {
+    header('Retry-After: ' . $limitCheck['retry_after']);
+    jsonResponse([
+        'message' => 'Demasiadas solicitudes. Por favor, inténtalo de nuevo en ' . $limitCheck['retry_after'] . ' segundos.'
+    ], 429);
 }
 
-function sanitizeInt($value) {
-    if ($value === null || $value === '') return null;
-    return is_numeric($value) ? (int)$value : null;
-}
-
-function validateEmail($email) {
-    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
-}
-
-function validateDate($date) {
-    $d = DateTime::createFromFormat('Y-m-d', $date);
-    return $d && $d->format('Y-m-d') === $date;
-}
-
-function validateTime($time) {
-    $t = DateTime::createFromFormat('H:i', $time);
-    return $t && $t->format('H:i') === $time;
-}
-
-function validatePassword($password) {
-    return is_string($password) && strlen($password) >= 6;
-}
-
-function validateRole($role) {
-    $validRoles = ['client', 'owner', 'administrator'];
-    return in_array($role, $validRoles, true);
-}
-
+header('X-RateLimit-Limit: 60');
+header('X-RateLimit-Remaining: ' . $limitCheck['remaining']);
 
 switch ($route) {
     case 'businesses':
@@ -278,8 +261,11 @@ switch ($route) {
                 jsonResponse(['message' => 'La contraseña debe tener al menos 6 caracteres'], 400);
             }
 
-            $existing = User::where('email', $email)->first();
+            $existing = User::withTrashed()->where('email', $email)->first();
             if ($existing) {
+                if ($existing->deleted_at !== null) {
+                    jsonResponse(['message' => 'Este correo electrónico pertenece a una cuenta desactivada. Contacte a soporte para recuperarla.'], 409);
+                }
                 jsonResponse(['message' => 'Email ya registrado'], 409);
             }
 
