@@ -11,7 +11,7 @@ class User extends Model
     use SoftDeletes;
 
     protected $table = 'users';
-    protected $fillable = ['name', 'email', 'role', 'password'];
+    protected $fillable = ['name', 'email', 'role', 'password', 'email_notifications', 'phone', 'whatsapp_notifications'];
     public $timestamps = false;
     protected $dates = ['deleted_at'];
 

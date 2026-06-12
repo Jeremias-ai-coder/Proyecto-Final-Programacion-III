@@ -63,6 +63,20 @@ function populateSelect(selectEl, items, labelFn) {
     }
 }
 
+// Helper para calcular la distancia en kilómetros (Fórmula de Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    if (lat1 === null || lon1 === null || lat2 === null || lon2 === null) return null;
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
 // 4. FUNCIÓN: RENDERIZAR TARJETAS DE NEGOCIOS (ESTILO MERCADO LIBRE)
 function renderBusinessCards(items) {
     const grid = document.getElementById('businessGrid');
@@ -70,12 +84,15 @@ function renderBusinessCards(items) {
     grid.innerHTML = '';
     
     if (!items.length) {
-        grid.innerHTML = '<div class="col-12"><div class="alert alert-info">No se encontraron empresas activas.</div></div>';
+        grid.innerHTML = '<div class="col-12"><div class="alert alert-info text-center py-4">No se encontraron negocios dentro del rango seleccionado.</div></div>';
         return;
     }
     
     const userId = localStorage.getItem('userId');
     const userRole = localStorage.getItem('userRole');
+    
+    const userLat = parseFloat(localStorage.getItem('userLat')) || null;
+    const userLng = parseFloat(localStorage.getItem('userLng')) || null;
     
     for (const business of items) {
         const card = document.createElement('div');
@@ -87,10 +104,19 @@ function renderBusinessCards(items) {
             ? `<img src="${business.logo_url}" class="w-100 h-100 object-fit-cover rounded-circle shadow-sm p-1" alt="${business.name}" onerror="this.outerHTML='<div class=&quot;avatar&quot;>${initials}</div>'">`
             : `<div class="avatar">${initials || 'TY'}</div>`;
 
+        // Calcular distancia si hay coordenadas
+        let distanceText = '';
+        if (userLat !== null && userLng !== null && business.latitude !== null && business.longitude !== null) {
+            const dist = calculateDistance(userLat, userLng, parseFloat(business.latitude), parseFloat(business.longitude));
+            if (dist !== null) {
+                distanceText = ` <span class="text-primary fw-semibold ms-1">• A ${dist.toFixed(1)} km</span>`;
+            }
+        }
+
         // Elegir si pintar la dirección
         const addressContent = business.address 
-            ? `<p class="mb-2 small text-muted text-truncate" title="${business.address}"><i class="bi bi-geo-alt me-1"></i>${business.address}</p>`
-            : `<p class="mb-2 small text-muted text-truncate text-secondary italic"><i class="bi bi-geo-alt me-1"></i>Dirección no especificada</p>`;
+            ? `<p class="mb-2 small text-muted text-truncate" title="${business.address}"><i class="bi bi-geo-alt me-1"></i>${business.address}${distanceText}</p>`
+            : `<p class="mb-2 small text-muted text-truncate text-secondary italic"><i class="bi bi-geo-alt me-1"></i>Dirección no especificada${distanceText}</p>`;
         
         const ratingAvg = business.reviews_avg_rating ? parseFloat(business.reviews_avg_rating).toFixed(1) : null;
         const ratingCount = business.reviews_count || 0;
@@ -124,11 +150,32 @@ function renderBusinessCards(items) {
 
 // Filtro cliente para buscar negocios
 function filterBusinesses(items, query) {
-    if (!query) return items;
-    return items.filter(b => {
-        const text = `${b.name} ${b.description || ''}`.toLowerCase();
-        return text.includes(query.toLowerCase());
-    });
+    const userLat = parseFloat(localStorage.getItem('userLat')) || null;
+    const userLng = parseFloat(localStorage.getItem('userLng')) || null;
+    const maxDistance = parseInt(localStorage.getItem('maxDistance'), 10) || 50;
+
+    let filtered = items;
+
+    // 1. Filtrar por cercanía si tenemos ubicación del usuario y la distancia no es 'Cualquiera' (205)
+    if (userLat !== null && userLng !== null && maxDistance <= 200) {
+        filtered = filtered.filter(b => {
+            if (b.latitude === null || b.longitude === null) {
+                return false; // Ocultamos negocios sin geolocalización cuando el filtro de cercanía está activo
+            }
+            const dist = calculateDistance(userLat, userLng, parseFloat(b.latitude), parseFloat(b.longitude));
+            return dist !== null && dist <= maxDistance;
+        });
+    }
+
+    // 2. Filtrar por término de búsqueda
+    if (query) {
+        filtered = filtered.filter(b => {
+            const text = `${b.name} ${b.description || ''} ${b.address || ''}`.toLowerCase();
+            return text.includes(query.toLowerCase());
+        });
+    }
+
+    return filtered;
 }
 
 // 5. INICIALIZADOR PRINCIPAL SEGURO DE CARGA (init)
@@ -182,7 +229,9 @@ async function init() {
         try { showCreationToast(insertedCreatedBusiness); } catch (e) { console.warn('No se pudo mostrar toast', e); }
     }
 
-    renderBusinessCards(businesses);
+    // Aplicar filtros iniciales en base a la ubicación/búsqueda
+    const initialQuery = businessSearch ? businessSearch.value : '';
+    renderBusinessCards(filterBusinesses(businesses, initialQuery));
 
     // Función para cerrar sesión
     async function handleLogout() {
@@ -243,6 +292,18 @@ async function init() {
                     if (configUserEmail) configUserEmail.value = u.email;
                     if (profileName) profileName.innerText = u.name;
                     if (profileLargeAvatar) profileLargeAvatar.innerText = initials || 'U';
+                    const prefNotifications = document.getElementById('prefNotifications');
+                    if (prefNotifications) {
+                        prefNotifications.checked = (u.email_notifications == 1);
+                    }
+                    const configUserPhone = document.getElementById('configUserPhone');
+                    if (configUserPhone) {
+                        configUserPhone.value = u.phone || '';
+                    }
+                    const prefWhatsapp = document.getElementById('prefWhatsapp');
+                    if (prefWhatsapp) {
+                        prefWhatsapp.checked = (u.whatsapp_notifications == 1);
+                    }
                     
                     let roleLabel = 'Cliente';
                     if (u.role === 'owner') roleLabel = 'Dueño de Negocio';
@@ -288,6 +349,25 @@ async function init() {
                     }
 
                     navbarActions.innerHTML = `
+                        <!-- Dropdown de Notificaciones -->
+                        <div class="dropdown me-2 position-relative">
+                            <button class="btn btn-link text-white p-1 position-relative border-0 shadow-none text-decoration-none" type="button" id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false" style="display: flex; align-items: center; justify-content: center; height: 32px; width: 32px; border-radius: 50%; background: rgba(255,255,255,0.15);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16">
+                                    <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
+                                </svg>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notificationBadge" style="font-size: 0.6rem; padding: 0.25em 0.45em;">0</span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-start shadow border-0 p-0 mt-2" id="notificationMenu" style="border-radius: 12px; width: 320px; max-height: 400px; overflow: hidden;" aria-labelledby="notificationBell">
+                                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                                    <span class="fw-bold text-dark" style="font-size: 0.9rem;">Notificaciones</span>
+                                    <button class="btn btn-link text-primary p-0 btn-sm text-decoration-none fw-semibold" id="btnMarkAllRead" style="font-size: 0.8rem;">Marcar leídas</button>
+                                </div>
+                                <div id="notificationList" style="max-height: 320px; overflow-y: auto;">
+                                    <div class="text-center py-4 text-muted small">Cargando notificaciones...</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="dropdown">
                             <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center gap-2 p-0 border-0 shadow-none" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                                 <div class="user-avatar-circle-nav">${initials || 'U'}</div>
@@ -366,6 +446,180 @@ async function init() {
             const filtered = filterBusinesses(businesses, businessSearch.value);
             renderBusinessCards(filtered);
             businessSearch.focus();
+        });
+    }
+
+    // === LÓGICA DE FILTRADO POR UBICACIÓN Y CERCANÍA ===
+    const btnUseGeolocation = document.getElementById('btnUseGeolocation');
+    const btnToggleManualLocation = document.getElementById('btnToggleManualLocation');
+    const btnSearchManualAddress = document.getElementById('btnSearchManualAddress');
+    const btnClearLocationFilter = document.getElementById('btnClearLocationFilter');
+    const distanceRange = document.getElementById('distanceRange');
+    const distanceRangeVal = document.getElementById('distanceRangeVal');
+    const userLocationText = document.getElementById('userLocationText');
+    const manualAddressInput = document.getElementById('manualAddressInput');
+    const manualLocationError = document.getElementById('manualLocationError');
+
+    // Inicializar controles desde localStorage
+    const savedLat = localStorage.getItem('userLat');
+    const savedLng = localStorage.getItem('userLng');
+    const savedAddress = localStorage.getItem('userAddress');
+    const savedDistance = localStorage.getItem('maxDistance') || '50';
+
+    if (distanceRange) {
+        distanceRange.value = savedDistance;
+        updateDistanceLabel(savedDistance);
+    }
+
+    if (savedLat && savedLng && userLocationText) {
+        userLocationText.innerHTML = `📍 <strong>${savedAddress || 'Ubicación guardada'}</strong>`;
+        if (btnClearLocationFilter) btnClearLocationFilter.style.display = 'block';
+    }
+
+    function updateDistanceLabel(val) {
+        const v = parseInt(val, 10);
+        if (v > 200) {
+            if (distanceRangeVal) distanceRangeVal.innerText = 'Cualquiera';
+        } else {
+            if (distanceRangeVal) distanceRangeVal.innerText = `${v} km`;
+        }
+    }
+
+    function triggerFiltering() {
+        const query = businessSearch ? businessSearch.value : '';
+        const filtered = filterBusinesses(businesses, query);
+        renderBusinessCards(filtered);
+    }
+
+    // Slider de distancia
+    if (distanceRange) {
+        distanceRange.addEventListener('input', (e) => {
+            const val = e.target.value;
+            localStorage.setItem('maxDistance', val);
+            updateDistanceLabel(val);
+            triggerFiltering();
+        });
+    }
+
+    // Geolocalización
+    if (btnUseGeolocation) {
+        btnUseGeolocation.addEventListener('click', () => {
+            const originalContent = btnUseGeolocation.innerHTML;
+            btnUseGeolocation.disabled = true;
+            btnUseGeolocation.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Buscando...';
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    localStorage.setItem('userLat', lat);
+                    localStorage.setItem('userLng', lng);
+
+                    let addressName = `Coordenadas: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    // Tratar de obtener dirección amigable mediante reverse geocoding
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.display_name) {
+                                const addr = data.address;
+                                const city = addr.city || addr.town || addr.village || addr.suburb || '';
+                                const state = addr.state || '';
+                                addressName = city && state ? `${city}, ${state}` : data.display_name.split(',').slice(0,3).join(',');
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Nominatim reverse geocoding failed', e);
+                    }
+
+                    localStorage.setItem('userAddress', addressName);
+                    if (userLocationText) {
+                        userLocationText.innerHTML = `📍 <strong>${addressName}</strong>`;
+                    }
+                    if (btnClearLocationFilter) btnClearLocationFilter.style.display = 'block';
+                    
+                    btnUseGeolocation.disabled = false;
+                    btnUseGeolocation.innerHTML = originalContent;
+
+                    triggerFiltering();
+                },
+                (error) => {
+                    console.error('Geolocation error', error);
+                    alert('No se pudo obtener tu ubicación actual. Por favor, ingrésala manualmente.');
+                    btnUseGeolocation.disabled = false;
+                    btnUseGeolocation.innerHTML = originalContent;
+                },
+                { timeout: 10000 }
+            );
+        });
+    }
+
+    // Búsqueda manual de dirección
+    if (btnSearchManualAddress) {
+        btnSearchManualAddress.addEventListener('click', async () => {
+            const address = manualAddressInput.value.trim();
+            if (!address) return;
+
+            const originalContent = btnSearchManualAddress.innerHTML;
+            btnSearchManualAddress.disabled = true;
+            btnSearchManualAddress.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            if (manualLocationError) manualLocationError.style.display = 'none';
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lng = parseFloat(data[0].lon);
+                        const displayName = data[0].display_name.split(',').slice(0, 3).join(',');
+
+                        localStorage.setItem('userLat', lat);
+                        localStorage.setItem('userLng', lng);
+                        localStorage.setItem('userAddress', displayName);
+
+                        if (userLocationText) {
+                            userLocationText.innerHTML = `📍 <strong>${displayName}</strong>`;
+                        }
+                        if (btnClearLocationFilter) btnClearLocationFilter.style.display = 'block';
+                        if (manualAddressInput) manualAddressInput.value = '';
+                        
+                        // Ocultar collapse
+                        const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('manualLocationCollapse'));
+                        if (bsCollapse) bsCollapse.hide();
+
+                        triggerFiltering();
+                    } else {
+                        throw new Error('Dirección no encontrada');
+                    }
+                } else {
+                    throw new Error('Error de conexión con el servidor geocodificador');
+                }
+            } catch (err) {
+                console.error(err);
+                if (manualLocationError) {
+                    manualLocationError.innerText = err.message || 'No se pudo geocodificar la dirección ingresada.';
+                    manualLocationError.style.display = 'block';
+                }
+            } finally {
+                btnSearchManualAddress.disabled = false;
+                btnSearchManualAddress.innerHTML = originalContent;
+            }
+        });
+    }
+
+    // Quitar filtro de ubicación
+    if (btnClearLocationFilter) {
+        btnClearLocationFilter.addEventListener('click', () => {
+            localStorage.removeItem('userLat');
+            localStorage.removeItem('userLng');
+            localStorage.removeItem('userAddress');
+
+            if (userLocationText) {
+                userLocationText.innerHTML = 'No se ha detectado tu ubicación actual.';
+            }
+            btnClearLocationFilter.style.display = 'none';
+            triggerFiltering();
         });
     }
 
@@ -997,6 +1251,79 @@ async function init() {
     const btnProfileLogout = document.getElementById('btnProfileLogout');
     if (btnProfileLogout) {
         btnProfileLogout.addEventListener('click', handleLogout);
+    }
+
+    const prefNotifications = document.getElementById('prefNotifications');
+    if (prefNotifications) {
+        prefNotifications.addEventListener('change', async () => {
+            try {
+                const res = await fetch(`${apiUrl}/users`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email_notifications: prefNotifications.checked ? 1 : 0 })
+                });
+                if (res.ok) {
+                    alert('Preferencias de correo actualizadas.');
+                } else {
+                    alert('No se pudieron guardar las preferencias.');
+                    prefNotifications.checked = !prefNotifications.checked;
+                }
+            } catch (err) {
+                console.error('Error al guardar preferencias:', err);
+                alert('Error de conexión.');
+                prefNotifications.checked = !prefNotifications.checked;
+            }
+        });
+    }
+
+    const btnSavePhone = document.getElementById('btnSavePhone');
+    if (btnSavePhone) {
+        btnSavePhone.addEventListener('click', async () => {
+            const configUserPhone = document.getElementById('configUserPhone');
+            const phoneVal = configUserPhone ? configUserPhone.value.trim() : '';
+            btnSavePhone.disabled = true;
+            try {
+                const res = await fetch(`${apiUrl}/users`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phoneVal })
+                });
+                if (res.ok) {
+                    alert('Número de teléfono guardado correctamente.');
+                } else {
+                    const data = await res.json();
+                    alert('No se pudo guardar el teléfono: ' + (data.message || 'Error desconocido'));
+                }
+            } catch (err) {
+                console.error('Error al guardar teléfono:', err);
+                alert('Error de conexión.');
+            } finally {
+                btnSavePhone.disabled = false;
+            }
+        });
+    }
+
+    const prefWhatsapp = document.getElementById('prefWhatsapp');
+    if (prefWhatsapp) {
+        prefWhatsapp.addEventListener('change', async () => {
+            try {
+                const res = await fetch(`${apiUrl}/users`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ whatsapp_notifications: prefWhatsapp.checked ? 1 : 0 })
+                });
+                if (res.ok) {
+                    alert('Preferencias de WhatsApp actualizadas.');
+                } else {
+                    alert('No se pudieron guardar las preferencias.');
+                    prefWhatsapp.checked = !prefWhatsapp.checked;
+                }
+            } catch (err) {
+                console.error('Error al guardar preferencias de WhatsApp:', err);
+                alert('Error de conexión.');
+                prefWhatsapp.checked = !prefWhatsapp.checked;
+            }
+        });
     }
 
     // 8. CONTROLADOR DE CANCELACIONES (API DELETE)

@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('owner','administrator','client') NOT NULL DEFAULT 'client',
+    email_notifications TINYINT(1) NOT NULL DEFAULT 1,
+    phone VARCHAR(30) DEFAULT NULL,
+    whatsapp_notifications TINYINT(1) NOT NULL DEFAULT 1,
     deleted_at TIMESTAMP NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -17,6 +20,8 @@ CREATE TABLE IF NOT EXISTS businesses (
     address VARCHAR(255) DEFAULT NULL,
     logo_url VARCHAR(255) DEFAULT NULL,
     owner_id INT NOT NULL,
+    latitude DECIMAL(10, 8) NULL DEFAULT NULL,
+    longitude DECIMAL(11, 8) NULL DEFAULT NULL,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -68,5 +73,16 @@ CREATE TABLE IF NOT EXISTS user_remember_tokens (
     selector CHAR(16) NOT NULL UNIQUE,
     hashed_validator CHAR(64) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('info', 'success', 'warning', 'danger') NOT NULL DEFAULT 'info',
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

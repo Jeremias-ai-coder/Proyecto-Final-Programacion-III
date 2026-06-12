@@ -12,7 +12,7 @@ use App\Models\Review;
 class Business extends Model
 {
     protected $table = 'businesses';
-    protected $fillable = ['name', 'description', 'address', 'logo_url', 'owner_id'];
+    protected $fillable = ['name', 'description', 'address', 'logo_url', 'owner_id', 'latitude', 'longitude'];
     public $timestamps = false;
 
     public function owner()

@@ -6,7 +6,8 @@
     "php": ">=8.0",
     "illuminate/database": "^10.0",
     "illuminate/events": "^10.0",
-    "vlucas/phpdotenv": "^5.5"
+    "vlucas/phpdotenv": "^5.5",
+    "phpmailer/phpmailer": "^7.1"
   },
   "autoload": {
     "psr-4": {

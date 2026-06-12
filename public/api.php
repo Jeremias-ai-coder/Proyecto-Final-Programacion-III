@@ -7,6 +7,9 @@ use App\Models\Service;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Models\Review;
+use App\Models\Notification;
+use App\Services\Mailer;
+use App\Services\WhatsApp;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
@@ -65,6 +68,8 @@ switch ($route) {
             $description = sanitizeString($input['description'] ?? '');
             $address = sanitizeString($input['address'] ?? '');
             $logoUrl = sanitizeString($input['logo_url'] ?? '');
+            $latitude = isset($input['latitude']) && $input['latitude'] !== '' ? floatval($input['latitude']) : null;
+            $longitude = isset($input['longitude']) && $input['longitude'] !== '' ? floatval($input['longitude']) : null;
             
             $ownerId = $_SESSION['user_id'] ?? null;
 
@@ -76,12 +81,32 @@ switch ($route) {
                 jsonResponse(['message' => 'Inicie sesión para registrar un negocio.'], 401);
             }
 
+            if (($latitude === null || $longitude === null) && $address !== '') {
+                $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
+                $opts = [
+                    'http' => [
+                        'header' => "User-Agent: TurnosYa-App/1.0\r\n"
+                    ]
+                ];
+                $context = stream_context_create($opts);
+                $response = @file_get_contents($url, false, $context);
+                if ($response) {
+                    $data = json_decode($response, true);
+                    if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
+                        $latitude = floatval($data[0]['lat']);
+                        $longitude = floatval($data[0]['lon']);
+                    }
+                }
+            }
+
             $business = Business::create([
                 'name' => $name,
                 'description' => $description,
                 'address' => $address !== '' ? $address : null,
                 'logo_url' => $logoUrl !== '' ? $logoUrl : null,
                 'owner_id' => $ownerId,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
             ]);
 
             $ownerUser = User::find($ownerId);
@@ -102,6 +127,8 @@ switch ($route) {
             $description = sanitizeString($input['description'] ?? '');
             $address = sanitizeString($input['address'] ?? '');
             $logoUrl = sanitizeString($input['logo_url'] ?? '');
+            $latitude = isset($input['latitude']) && $input['latitude'] !== '' ? floatval($input['latitude']) : null;
+            $longitude = isset($input['longitude']) && $input['longitude'] !== '' ? floatval($input['longitude']) : null;
 
             if ($id === null) {
                 jsonResponse(['message' => 'El id del negocio es obligatorio'], 400);
@@ -121,11 +148,31 @@ switch ($route) {
                 jsonResponse(['message' => 'No tienes permisos para editar este negocio.'], 403);
             }
 
+            if (($latitude === null || $longitude === null) && $address !== '') {
+                $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
+                $opts = [
+                    'http' => [
+                        'header' => "User-Agent: TurnosYa-App/1.0\r\n"
+                    ]
+                ];
+                $context = stream_context_create($opts);
+                $response = @file_get_contents($url, false, $context);
+                if ($response) {
+                    $data = json_decode($response, true);
+                    if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
+                        $latitude = floatval($data[0]['lat']);
+                        $longitude = floatval($data[0]['lon']);
+                    }
+                }
+            }
+
             $business->update([
                 'name' => $name,
                 'description' => $description,
                 'address' => $address !== '' ? $address : null,
                 'logo_url' => $logoUrl !== '' ? $logoUrl : null,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
             ]);
 
             jsonResponse($business);
@@ -172,6 +219,8 @@ switch ($route) {
             $description = sanitizeString($input['description'] ?? '');
             $address = sanitizeString($input['address'] ?? '');
             $logoUrl = sanitizeString($input['logo_url'] ?? '');
+            $latitude = isset($input['latitude']) && $input['latitude'] !== '' ? floatval($input['latitude']) : null;
+            $longitude = isset($input['longitude']) && $input['longitude'] !== '' ? floatval($input['longitude']) : null;
             
             $ownerId = $_SESSION['user_id'] ?? null;
             
@@ -196,12 +245,32 @@ switch ($route) {
                 jsonResponse(['message' => 'La hora de inicio debe ser anterior a la hora de fin'], 400);
             }
 
+            if (($latitude === null || $longitude === null) && $address !== '') {
+                $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
+                $opts = [
+                    'http' => [
+                        'header' => "User-Agent: TurnosYa-App/1.0\r\n"
+                    ]
+                ];
+                $context = stream_context_create($opts);
+                $response = @file_get_contents($url, false, $context);
+                if ($response) {
+                    $data = json_decode($response, true);
+                    if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
+                        $latitude = floatval($data[0]['lat']);
+                        $longitude = floatval($data[0]['lon']);
+                    }
+                }
+            }
+
             $business = Business::create([
                 'name' => $name,
                 'description' => $description,
                 'address' => $address !== '' ? $address : null,
                 'logo_url' => $logoUrl !== '' ? $logoUrl : null,
                 'owner_id' => $ownerId,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
             ]);
 
             for ($day = $startDay; $day <= $endDay; $day++) {
@@ -300,6 +369,31 @@ switch ($route) {
             } catch (Throwable $e) {
                 jsonResponse(['message' => 'Hubo un problema al crear la cuenta. Por favor inténtalo nuevamente.'], 500);
             }
+        }
+
+        if ($method === 'PUT') {
+            $sessionUserId = $_SESSION['user_id'] ?? null;
+            if (!$sessionUserId) {
+                jsonResponse(['message' => 'No autorizado'], 401);
+            }
+
+            $user = User::find($sessionUserId);
+            if (!$user) {
+                jsonResponse(['message' => 'Usuario no encontrado'], 404);
+            }
+
+            if (isset($input['email_notifications'])) {
+                $user->email_notifications = (int)$input['email_notifications'];
+            }
+            if (isset($input['phone'])) {
+                $user->phone = sanitizeString($input['phone']);
+            }
+            if (isset($input['whatsapp_notifications'])) {
+                $user->whatsapp_notifications = (int)$input['whatsapp_notifications'];
+            }
+
+            $user->save();
+            jsonResponse(['message' => 'Preferencias actualizadas con éxito', 'user' => $user]);
         }
         break;
 
@@ -721,6 +815,47 @@ switch ($route) {
                 'time' => $time,
                 'status' => 'pending',
             ]);
+
+            // Crear notificaciones In-App
+            try {
+                Notification::create([
+                    'user_id' => $userId,
+                    'title' => 'Turno Agendado',
+                    'message' => 'Has agendado un turno en ' . $business->name . ' para el ' . date('d/m/Y', strtotime($date)) . ' a las ' . date('H:i', strtotime($time)) . ' hs.',
+                    'type' => 'success',
+                    'is_read' => 0
+                ]);
+                
+                Notification::create([
+                    'user_id' => $business->owner_id,
+                    'title' => 'Nueva Reserva',
+                    'message' => 'El cliente ' . $user->name . ' reservó un turno para ' . $service->name . ' el ' . date('d/m/Y', strtotime($date)) . ' a las ' . date('H:i', strtotime($time)) . ' hs.',
+                    'type' => 'info',
+                    'is_read' => 0
+                ]);
+            } catch (Throwable $notifEx) {
+                // Silenciar errores de notificación para no romper la reserva
+            }
+
+            // Enviar correo de confirmación
+            try {
+                Mailer::sendAppointmentCreatedEmail($appointment);
+            } catch (Throwable $mailEx) {
+                // Silenciar
+            }
+
+            // Enviar WhatsApp de confirmación
+            try {
+                if ($user->phone && $user->whatsapp_notifications == 1) {
+                    $dateFormatted = date('d/m/Y', strtotime($date));
+                    $timeFormatted = date('H:i', strtotime($time));
+                    $msg = "Hola {$user->name}, tu turno en {$business->name} para el servicio {$service->name} ha sido reservado para el {$dateFormatted} a las {$timeFormatted} hs.";
+                    WhatsApp::sendWhatsAppNotification($user->phone, $msg);
+                }
+            } catch (Throwable $waEx) {
+                // Silenciar
+            }
+
             jsonResponse($appointment, 201);
         }
 
@@ -751,8 +886,77 @@ switch ($route) {
                 jsonResponse(['message' => 'Estado de turno inválido'], 400);
             }
 
+            $oldStatus = $appointment->status;
             $appointment->status = $status;
             $appointment->save();
+
+            // Si el estado cambió, enviar notificaciones
+            if ($oldStatus !== $status) {
+                try {
+                    $appointment->load(['service', 'user']);
+                    if ($status === 'cancelled') {
+                        if ($sessionUserId === $appointment->user_id) {
+                            Notification::create([
+                                'user_id' => $appointment->user_id,
+                                'title' => 'Turno Cancelado',
+                                'message' => 'Has cancelado tu turno en ' . $business->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs.',
+                                'type' => 'warning',
+                                'is_read' => 0
+                            ]);
+                            Notification::create([
+                                'user_id' => $business->owner_id,
+                                'title' => 'Turno Cancelado por Cliente',
+                                'message' => 'El cliente ' . $appointment->user->name . ' canceló su turno para ' . $appointment->service->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs.',
+                                'type' => 'danger',
+                                'is_read' => 0
+                            ]);
+                        } else {
+                            Notification::create([
+                                'user_id' => $appointment->user_id,
+                                'title' => 'Turno Cancelado por Negocio',
+                                'message' => 'Tu turno en ' . $business->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs ha sido cancelado por el negocio.',
+                                'type' => 'danger',
+                                'is_read' => 0
+                            ]);
+                            Notification::create([
+                                'user_id' => $business->owner_id,
+                                'title' => 'Turno Cancelado',
+                                'message' => 'Has cancelado el turno de ' . $appointment->user->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs.',
+                                'type' => 'warning',
+                                'is_read' => 0
+                            ]);
+                        }
+
+                        // Enviar email de cancelación
+                        try {
+                            Mailer::sendAppointmentCancelledEmail($appointment, $sessionUserId === $appointment->user_id ? 'client' : 'owner');
+                        } catch (Throwable $mailEx) {}
+
+                        // Enviar WhatsApp de cancelación
+                        try {
+                            $client = $appointment->user;
+                            if ($client->phone && $client->whatsapp_notifications == 1) {
+                                $origin = $sessionUserId === $appointment->user_id ? 'por ti' : 'por el negocio';
+                                $dateFormatted = date('d/m/Y', strtotime($appointment->date));
+                                $timeFormatted = date('H:i', strtotime($appointment->time));
+                                $msg = "Hola {$client->name}, tu turno en {$business->name} reservado para el {$dateFormatted} a las {$timeFormatted} hs ha sido cancelado {$origin}.";
+                                WhatsApp::sendWhatsAppNotification($client->phone, $msg);
+                            }
+                        } catch (Throwable $waEx) {}
+                    } elseif ($status === 'completed') {
+                        Notification::create([
+                            'user_id' => $appointment->user_id,
+                            'title' => 'Turno Completado',
+                            'message' => 'Tu turno en ' . $business->name . ' ha sido completado. ¡Gracias por tu visita!',
+                            'type' => 'success',
+                            'is_read' => 0
+                        ]);
+                    }
+                } catch (Throwable $notifEx) {
+                    // Silenciar
+                }
+            }
+
             jsonResponse($appointment);
         }
 
@@ -797,7 +1001,97 @@ switch ($route) {
 
             $appointment->status = 'cancelled';
             $appointment->save();
+
+            try {
+                $appointment->load(['service', 'user']);
+                if ($sessionUserId === $appointment->user_id) {
+                    Notification::create([
+                        'user_id' => $appointment->user_id,
+                        'title' => 'Turno Cancelado',
+                        'message' => 'Has cancelado tu turno en ' . $business->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs.',
+                        'type' => 'warning',
+                        'is_read' => 0
+                    ]);
+                    Notification::create([
+                        'user_id' => $business->owner_id,
+                        'title' => 'Turno Cancelado por Cliente',
+                        'message' => 'El cliente ' . $appointment->user->name . ' canceló su turno para ' . $appointment->service->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs.',
+                        'type' => 'danger',
+                        'is_read' => 0
+                    ]);
+                } else {
+                    Notification::create([
+                        'user_id' => $appointment->user_id,
+                        'title' => 'Turno Cancelado por Negocio',
+                        'message' => 'Tu turno en ' . $business->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs ha sido cancelado por el negocio.',
+                        'type' => 'danger',
+                        'is_read' => 0
+                    ]);
+                    Notification::create([
+                        'user_id' => $business->owner_id,
+                        'title' => 'Turno Cancelado',
+                        'message' => 'Has cancelado el turno de ' . $appointment->user->name . ' del ' . date('d/m/Y', strtotime($appointment->date)) . ' a las ' . date('H:i', strtotime($appointment->time)) . ' hs.',
+                        'type' => 'warning',
+                        'is_read' => 0
+                    ]);
+                }
+            } catch (Throwable $notifEx) {
+                // Silenciar
+            }
+
+            // Enviar email de cancelación
+            try {
+                Mailer::sendAppointmentCancelledEmail($appointment, $sessionUserId === $appointment->user_id ? 'client' : 'owner');
+            } catch (Throwable $mailEx) {}
+
+            // Enviar WhatsApp de cancelación
+            try {
+                $client = $appointment->user;
+                if ($client->phone && $client->whatsapp_notifications == 1) {
+                    $origin = $sessionUserId === $appointment->user_id ? 'por ti' : 'por el negocio';
+                    $dateFormatted = date('d/m/Y', strtotime($appointment->date));
+                    $timeFormatted = date('H:i', strtotime($appointment->time));
+                    $msg = "Hola {$client->name}, tu turno en {$business->name} reservado para el {$dateFormatted} a las {$timeFormatted} hs ha sido cancelado {$origin}.";
+                    WhatsApp::sendWhatsAppNotification($client->phone, $msg);
+                }
+            } catch (Throwable $waEx) {}
+
             jsonResponse(['message' => 'Turno cancelado exitosamente', 'appointment' => $appointment]);
+        }
+        break;
+
+    case 'notifications':
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            jsonResponse(['message' => 'No autorizado'], 401);
+        }
+
+        if ($method === 'GET') {
+            $notifications = Notification::where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->limit(40)
+                ->get();
+            jsonResponse($notifications);
+        }
+
+        if ($method === 'PUT') {
+            $id = $input['id'] ?? null;
+            if ($id === 'all') {
+                Notification::where('user_id', $userId)->update(['is_read' => 1]);
+                jsonResponse(['message' => 'Todas las notificaciones marcadas como leídas']);
+            } elseif ($id !== null) {
+                $id = sanitizeInt($id);
+                $notification = Notification::where('user_id', $userId)->where('id', $id)->first();
+                if ($notification) {
+                    $notification->is_read = 1;
+                    $notification->save();
+                    jsonResponse($notification);
+                } else {
+                    jsonResponse(['message' => 'Notificación no encontrada'], 404);
+                }
+            } else {
+                jsonResponse(['message' => 'Falta id de notificación'], 400);
+            }
         }
         break;
 

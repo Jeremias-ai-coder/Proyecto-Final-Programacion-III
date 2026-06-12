@@ -597,13 +597,18 @@ function setupFormSubmits() {
             const submitBtn = editBusinessForm.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.disabled = true;
 
+            const addressVal = document.getElementById('editBusinessAddress').value.trim();
+            const coords = await geocodeAddress(addressVal);
+
             const payload = {
                 id: currentBusinessId,
                 name: document.getElementById('editBusinessName').value.trim(),
                 description: document.getElementById('editBusinessDescription').value.trim(),
-                address: document.getElementById('editBusinessAddress').value.trim(),
+                address: addressVal,
                 logo_url: document.getElementById('editBusinessLogoUrl').value.trim(),
-                owner_id: parseInt(userId, 10)
+                owner_id: parseInt(userId, 10),
+                latitude: coords.latitude,
+                longitude: coords.longitude
             };
 
             try {
@@ -693,6 +698,26 @@ function setupFormSubmits() {
     }
 }
 
+// Helper de geocodificación mediante Nominatim
+async function geocodeAddress(address) {
+    if (!address) return { latitude: null, longitude: null };
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) {
+                return {
+                    latitude: parseFloat(data[0].lat),
+                    longitude: parseFloat(data[0].lon)
+                };
+            }
+        }
+    } catch (e) {
+        console.warn('Nominatim geocoding failed', e);
+    }
+    return { latitude: null, longitude: null };
+}
+
 // 14. PROCESAR CREACIÓN DE NEGOCIO
 async function handleRegisterBusiness(e, formElement) {
     e.preventDefault();
@@ -700,11 +725,16 @@ async function handleRegisterBusiness(e, formElement) {
     if (submitBtn) submitBtn.disabled = true;
 
     const formData = new FormData(formElement);
+    const addressVal = formData.get('businessAddress');
+    const coords = await geocodeAddress(addressVal);
+
     const payload = {
         name: formData.get('businessName'),
         description: formData.get('businessDescription'),
-        address: formData.get('businessAddress'),
-        logo_url: formData.get('businessLogoUrl')
+        address: addressVal,
+        logo_url: formData.get('businessLogoUrl'),
+        latitude: coords.latitude,
+        longitude: coords.longitude
     };
 
     try {
