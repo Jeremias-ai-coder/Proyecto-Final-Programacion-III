@@ -18,458 +18,657 @@ const pageBasePath = (function() {
     }
 })();
 const apiUrl = pageBasePath + '/api';
-let cachedBusinesses = [];
 
-// 1. CONTROL DE ACCESO (AUTENTICACIÓN Y ROLES)
-// Obtenemos los datos de sesión almacenados en localStorage al iniciar sesión
+// 1. CONTROL DE ACCESO
 const userId = localStorage.getItem('userId');
 const userRole = localStorage.getItem('userRole');
 
-// Si no hay sesión o el usuario no es Dueño ni Administrador, bloqueamos el acceso
 if (!userId || (userRole !== 'owner' && userRole !== 'administrator')) {
     alert('Acceso denegado. Debes iniciar sesión como dueño o administrador.');
-    window.location.href = pageBasePath + '/login'; // Redirección al formulario de login
+    window.location.href = pageBasePath + '/login';
 }
 
-// 2. FUNCIÓN DE PETICIONES HTTP
-// Simplifica llamadas AJAX usando fetch, soportando envío de datos en JSON
-async function request(route, method = 'GET', body = null) {
-    const options = { method, headers: {} };
-    if (body) {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(body);
-    }
-    const url = `${apiUrl}/${route}`;
-    const response = await fetch(url, options);
-    return response;
-}
+// 2. ESTADO GLOBAL DEL PANEL
+let businesses = [];
+let currentBusinessId = null;
+let currentDate = new Date().toISOString().slice(0, 10);
 
-// 3. VINCULADOR DE FORMULARIOS AUTOMÁTICO (CRUD)
-// Automatiza el envío de formularios por POST y maneja las respuestas JSON de la API
-function bindForm(formId, route, successMessage, extraMapper = (body) => body, onSuccess = null) {
-    const form = document.getElementById(formId);
-    if (!form) return;
-    
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault(); // Evitamos la recarga por defecto de la página
-        
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-        }
-        
-        const formData = new FormData(form);
-        const body = {};
-        for (const [key, value] of formData.entries()) {
-            body[key] = value;
-        }
-        
-        // Mapeamos los datos del formulario al formato esperado por el backend
-        const payload = extraMapper(body);
-        
-        // Validaciones previas en el cliente
-        if (payload.hasOwnProperty('owner_id') && (!payload.owner_id || isNaN(payload.owner_id))) {
-            alert('Debes iniciar sesión como dueño para crear un negocio.');
-            if (submitBtn) submitBtn.disabled = false;
-            return;
-        }
-        
-        if (payload.hasOwnProperty('business_id') && !payload.business_id) {
-            alert('Por favor selecciona un negocio válido.');
-            if (submitBtn) submitBtn.disabled = false;
-            return;
-        }
+// Elementos del DOM
+const welcomeUser = document.getElementById('welcomeUser');
+const roleBadge = document.getElementById('roleBadge');
+const logoutBtn = document.getElementById('logoutBtn');
 
-        try {
-            // Enviamos la petición a la API
-            const res = await request(route, 'POST', payload);
-            let data = null;
-            try { data = await res.json(); } catch (e) { data = null; }
-            
-            if (res.ok) {
-                alert(successMessage + (data && data.id ? (": " + data.id) : ''));
-                form.reset(); // Limpiamos los campos
-                if (typeof onSuccess === 'function') onSuccess(data); // Ejecutamos callback si existe
-            } else {
-                alert('Error: ' + (data && data.message ? data.message : res.statusText));
-            }
-        } catch (error) {
-            console.error('Error submitting form', error);
-            alert('Error de conexión con el servidor.');
-        } finally {
-            if (submitBtn) submitBtn.disabled = false;
-        }
-    });
-}
+const noBusinessesAlert = document.getElementById('noBusinessesAlert');
+const activeDashboard = document.getElementById('activeDashboard');
 
-// 4. ENVÍO DE FORMULARIO: REGISTRAR NEGOCIO
-bindForm('businessForm', 'businesses', 'Negocio creado', (body) => ({
-    name: body.businessName,
-    description: body.businessDescription,
-    address: body.businessAddress,
-    logo_url: body.businessLogoUrl,
-    owner_id: (localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId')) : null),
-}), async (created) => {
-    // Al crear un negocio nuevo, actualizamos inmediatamente todos los desplegables del panel
-    const businesses = await loadBusinessesInto(
-        document.getElementById('serviceBusinessId'),
-        document.getElementById('scheduleBusinessId'),
-        document.getElementById('agendaBusinessId')
-    );
-    // Notificamos a otras secciones del sistema mediante un evento personalizado
-    document.dispatchEvent(new CustomEvent('businessesUpdated', { detail: { businesses } }));
-});
+const activeBusinessName = document.getElementById('activeBusinessName');
+const businessTitleText = document.getElementById('businessTitleText');
+const activeBusinessAddress = document.getElementById('activeBusinessAddress');
 
-// 5. ENVÍO DE FORMULARIO: CREAR SERVICIO
-bindForm('serviceForm', 'services', 'Servicio creado', (body) => ({
-    // Leemos el ID del negocio directamente del DOM (para que funcione incluso si el selector está deshabilitado)
-    business_id: document.getElementById('serviceBusinessId').value,
-    name: body.serviceName,
-    description: body.serviceDescription,
-    duration_minutes: body.serviceDuration,
-    price: body.servicePrice,
-}), (created) => {
-    document.dispatchEvent(new CustomEvent('servicesUpdated', { detail: { service: created } }));
-});
+const globalBusinessSelectorContainer = document.getElementById('globalBusinessSelectorContainer');
+const globalBusinessSelect = document.getElementById('globalBusinessSelect');
 
-// 6. ENVÍO DE FORMULARIO: DEFINIR HORARIO DE ATENCIÓN
-bindForm('scheduleForm', 'schedule', 'Horario guardado', (body) => ({
-    business_id: document.getElementById('scheduleBusinessId').value,
-    day_of_week: body.scheduleDay,
-    start_time: body.scheduleStart,
-    end_time: body.scheduleEnd,
-}), (created) => {
-    document.dispatchEvent(new CustomEvent('schedulesUpdated', { detail: { schedule: created } }));
-});
+const metricTodayAppts = document.getElementById('metricTodayAppts');
+const metricActiveServices = document.getElementById('metricActiveServices');
+const metricRating = document.getElementById('metricRating');
 
-// 7. CARGA COMERCIAL DE LA AGENDA DIARIA
-const loadAgenda = document.getElementById('loadAgenda');
-if (loadAgenda) {
-    loadAgenda.addEventListener('click', async () => {
-        const businessId = document.getElementById('agendaBusinessId').value;
-        const date = document.getElementById('agendaDate').value || new Date().toISOString().slice(0, 10);
-        
-        if (!businessId) {
-            alert('Selecciona un negocio para visualizar la agenda.');
-            return;
-        }
+const agendaDateInput = document.getElementById('agendaDateInput');
+const btnPrevDay = document.getElementById('btnPrevDay');
+const btnNextDay = document.getElementById('btnNextDay');
+const agendaResult = document.getElementById('agendaResult');
 
-        // Consultamos a la API los turnos y horarios de ese día específico
-        const result = await fetch(`${apiUrl}/agenda?business_id=${businessId}&date=${date}`);
-        const data = await result.json();
-        
-        const target = document.getElementById('agendaResult');
-        target.innerHTML = '';
-        
-        // Renderizamos los horarios configurados del negocio
-        if (data.schedules.length === 0) {
-            target.innerHTML = '<p class="text-muted text-center">No hay horarios definidos para este día.</p>';
-        } else {
-            target.innerHTML = data.schedules.map(s => `
-                <div class="agenda-item">
-                    <strong>Día de la semana:</strong> ${s.day_of_week} — Horario: ${s.start_time.substring(0,5)} a ${s.end_time.substring(0,5)} hs
-                </div>
-            `).join('');
-        }
-        
-        // Renderizamos el listado de turnos que ya se encuentran agendados por clientes
-        if (data.appointments.length > 0) {
-            target.innerHTML += '<h5 class="fw-bold mt-4 mb-3 text-dark">Turnos agendados</h5>';
-            target.innerHTML += data.appointments.map(a => {
-                let badgeClass = 'bg-secondary';
-                let statusLabel = 'Pendiente';
-                if (a.status === 'completed') { badgeClass = 'bg-success'; statusLabel = 'Completado'; }
-                else if (a.status === 'cancelled') { badgeClass = 'bg-danger'; statusLabel = 'Cancelado'; }
+const serviceForm = document.getElementById('serviceForm');
+const servicesListTable = document.getElementById('servicesListTable');
 
-                return `
-                    <div class="agenda-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Hora:</strong> ${a.time.substring(0, 5)} hs — 
-                            <strong>Servicio:</strong> ${a.service.name} — 
-                            <strong>Cliente:</strong> ${a.user.name}
-                        </div>
-                        <span class="badge ${badgeClass}">${statusLabel}</span>
-                    </div>
-                `;
-            }).join('');
-        }
-    });
-}
+const scheduleForm = document.getElementById('scheduleForm');
+const schedulesListTable = document.getElementById('schedulesListTable');
 
-// 8. LLENADO DINÁMICO DE SELECTORES SEGÚN ROL
-// Consulta a la API y llena los selectores de negocio. Si es dueño, los filtra automáticamente.
-async function loadBusinessesInto(...sels) {
+const editBusinessForm = document.getElementById('editBusinessForm');
+const registerBusinessForm = document.getElementById('registerBusinessForm');
+const firstBusinessForm = document.getElementById('firstBusinessForm');
+
+// Mapeo de días de la semana
+const dayNames = {
+    1: 'Lunes',
+    2: 'Martes',
+    3: 'Miércoles',
+    4: 'Jueves',
+    5: 'Viernes',
+    6: 'Sábado',
+    7: 'Domingo'
+};
+
+// 3. CARGA DE NEGOCIOS DE LA API
+async function loadBusinessesFromServer() {
     let url = `${apiUrl}/businesses`;
-    // Si el usuario conectado es dueño (owner), aplicamos el filtro en la API
     if (userRole === 'owner') {
         url += `?owner_id=${userId}`;
     }
-    
     try {
         const res = await fetch(url);
-        if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`HTTP ${res.status}: ${errText}`);
-        }
-        const businesses = await res.json();
-        cachedBusinesses = businesses; // Guardar en caché local
-
-        function fill(sel) {
-            if (!sel) return;
-            sel.disabled = false; // Habilitar por defecto
-            sel.innerHTML = '';
-
-            // Si el dueño no tiene negocios creados
-            if (businesses.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.text = 'No tienes negocios registrados';
-                sel.appendChild(opt);
-                return;
-            }
-
-            // UX: Si tiene exactamente un negocio, lo pre-seleccionamos pero lo dejamos activo
-            if (businesses.length === 1 && userRole === 'owner') {
-                const b = businesses[0];
-                const opt = document.createElement('option');
-                opt.value = b.id;
-                opt.text = b.name;
-                opt.selected = true;
-                sel.appendChild(opt);
-                return;
-            }
-
-            // Caso contrario (múltiples negocios), mostramos desplegable tradicional
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.text = '-- Seleccione --';
-            sel.appendChild(placeholder);
-
-            for (const b of businesses) {
-                const opt = document.createElement('option');
-                opt.value = b.id;
-                opt.text = b.name;
-                sel.appendChild(opt);
-            }
-        }
-
-        for (const sel of sels) fill(sel);
+        if (!res.ok) throw new Error('Error al consultar negocios');
+        businesses = await res.json();
         return businesses;
     } catch (e) {
-        console.error('Error al cargar negocios en el panel:', e);
-        alert('Error al cargar negocios en el panel: ' + e.message);
+        console.error('Error loading businesses:', e);
         return [];
     }
 }
 
-// 9. INICIALIZACIÓN AL CARGAR LA PÁGINA
+// 4. INICIALIZADOR PRINCIPAL
 async function initDashboard() {
-
-    // A. Mostrar datos de usuario y rol dinámicamente en el banner
-    const welcomeUser = document.getElementById('welcomeUser');
-    const roleBadge = document.getElementById('roleBadge');
-    const logoutBtn = document.getElementById('logoutBtn');
-    
+    // A. Mostrar datos de usuario y rol en el banner
     if (welcomeUser) {
         const userName = localStorage.getItem('userName') || 'Usuario';
         welcomeUser.innerText = `¡Hola, ${userName}!`;
     }
-    
     if (roleBadge) {
         const roleText = userRole === 'owner' ? 'Dueño de Negocio' : 'Administrador del Sistema';
         roleBadge.innerText = roleText;
         roleBadge.className = userRole === 'owner' ? 'badge bg-success mt-1 fs-6 px-3 py-2' : 'badge bg-dark mt-1 fs-6 px-3 py-2';
     }
-    
-    // B. Vincular el botón de Cerrar Sesión del banner
+
+    // B. Cargar negocios
+    await refreshBusinessesList();
+
+    // C. Vincular Cierre de Sesión
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
                 await fetch(`${apiUrl}/logout`, { method: 'POST' });
             } catch (e) {
-                console.error('Error closing session on server', e);
+                console.error('Error closing session on server:', e);
             }
-            localStorage.clear(); // Limpiamos todos los datos guardados en navegador
+            localStorage.clear();
             alert('Sesión cerrada correctamente.');
             window.location.href = pageBasePath + '/login';
         });
     }
 
-    const serviceBusiness = document.getElementById('serviceBusinessId');
-    const scheduleBusiness = document.getElementById('scheduleBusinessId');
-    const agendaBusiness = document.getElementById('agendaBusinessId');
-    const editBusiness = document.getElementById('editBusinessId');
-    
-    // C. Cargar los negocios correspondientes en los desplegables
-    const businesses = await loadBusinessesInto(serviceBusiness, scheduleBusiness, agendaBusiness, editBusiness);
+    // D. Vincular Navegador de Agenda por Fechas
+    if (agendaDateInput) {
+        agendaDateInput.value = currentDate;
+        agendaDateInput.addEventListener('change', (e) => {
+            currentDate = e.target.value;
+            loadAgenda();
+        });
+    }
+    if (btnPrevDay) {
+        btnPrevDay.addEventListener('click', () => changeDate(-1));
+    }
+    if (btnNextDay) {
+        btnNextDay.addEventListener('click', () => changeDate(1));
+    }
 
-    // D. Vincular evento de auto-rellenado para el formulario de edición
+    // E. Vincular Envío de Formularios
+    setupFormSubmits();
+}
+
+// 5. NAVEGAR ENTRE FECHAS
+function changeDate(daysOffset) {
+    const dateObj = new Date(currentDate + 'T00:00:00');
+    dateObj.setDate(dateObj.getDate() + daysOffset);
+    currentDate = dateObj.toISOString().slice(0, 10);
+    if (agendaDateInput) {
+        agendaDateInput.value = currentDate;
+    }
+    loadAgenda();
+}
+
+// 6. ACTUALIZAR LISTADO Y MOSTRAR VISTA CORRECTA
+async function refreshBusinessesList() {
+    await loadBusinessesFromServer();
+
+    if (businesses.length === 0) {
+        // No tiene negocios: Mostrar primer registro
+        if (noBusinessesAlert) noBusinessesAlert.style.display = 'block';
+        if (activeDashboard) activeDashboard.style.display = 'none';
+        currentBusinessId = null;
+    } else {
+        // Tiene negocios: Mostrar dashboard y cargar el activo
+        if (noBusinessesAlert) noBusinessesAlert.style.display = 'none';
+        if (activeDashboard) activeDashboard.style.display = 'block';
+
+        // Configurar selector global
+        populateGlobalSelector();
+
+        // Elegir negocio a mostrar (el primero por defecto si no hay ninguno seleccionado)
+        if (!currentBusinessId || !businesses.some(b => b.id == currentBusinessId)) {
+            currentBusinessId = businesses[0].id;
+        }
+
+        if (globalBusinessSelect) {
+            globalBusinessSelect.value = currentBusinessId;
+        }
+
+        switchBusiness(currentBusinessId);
+    }
+}
+
+// 7. POBLAR SELECTOR GLOBAL
+function populateGlobalSelector() {
+    if (!globalBusinessSelect) return;
+    globalBusinessSelect.innerHTML = '';
+
+    if (businesses.length > 1) {
+        if (globalBusinessSelectorContainer) globalBusinessSelectorContainer.style.display = 'block';
+        for (const b of businesses) {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.text = b.name;
+            globalBusinessSelect.appendChild(opt);
+        }
+    } else {
+        if (globalBusinessSelectorContainer) globalBusinessSelectorContainer.style.display = 'none';
+    }
+}
+
+// Vincular selector global
+if (globalBusinessSelect) {
+    globalBusinessSelect.addEventListener('change', (e) => {
+        switchBusiness(parseInt(e.target.value, 10));
+    });
+}
+
+// 8. CAMBIAR DE NEGOCIO ACTIVO
+function switchBusiness(businessId) {
+    currentBusinessId = businessId;
+    const biz = businesses.find(b => b.id == businessId);
+    if (!biz) return;
+
+    // Actualizar títulos
+    if (businessTitleText) businessTitleText.innerText = biz.name;
+    if (activeBusinessAddress) {
+        activeBusinessAddress.innerHTML = biz.address ? `<i class="bi bi-geo-alt me-1"></i> ${biz.address}` : '<i class="bi bi-geo-alt me-1"></i> Dirección comercial no especificada';
+    }
+
+    // Llenar formulario de edición
+    const editBusinessId = document.getElementById('editBusinessId');
     const editName = document.getElementById('editBusinessName');
     const editDesc = document.getElementById('editBusinessDescription');
     const editAddr = document.getElementById('editBusinessAddress');
     const editLogo = document.getElementById('editBusinessLogoUrl');
 
-    function autofillEditForm() {
-        if (!editBusiness) return;
-        const bid = parseInt(editBusiness.value, 10);
-        if (!bid) {
-            if (editName) editName.value = "";
-            if (editDesc) editDesc.value = "";
-            if (editAddr) editAddr.value = "";
-            if (editLogo) editLogo.value = "";
-            return;
-        }
-        const biz = cachedBusinesses.find(b => b.id === bid);
-        if (biz) {
-            if (editName) editName.value = biz.name || "";
-            if (editDesc) editDesc.value = biz.description || "";
-            if (editAddr) editAddr.value = biz.address || "";
-            if (editLogo) editLogo.value = biz.logo_url || "";
-        }
+    if (editBusinessId) editBusinessId.value = biz.id;
+    if (editName) editName.value = biz.name || '';
+    if (editDesc) editDesc.value = biz.description || '';
+    if (editAddr) editAddr.value = biz.address || '';
+    if (editLogo) editLogo.value = biz.logo_url || '';
+
+    // Actualizar métricas fijas
+    if (metricActiveServices) {
+        metricActiveServices.innerText = biz.services ? biz.services.length : 0;
+    }
+    if (metricRating) {
+        metricRating.innerText = biz.reviews_avg_rating ? parseFloat(biz.reviews_avg_rating).toFixed(1) + ' / 5' : 'N/A';
     }
 
-    if (editBusiness) {
-        editBusiness.addEventListener('change', autofillEditForm);
-        // Si hay exactamente un negocio (que estará pre-seleccionado), auto-rellenar al inicio
-        if (cachedBusinesses.length === 1) {
-            autofillEditForm();
-        }
+    // Renderizar tablas locales
+    renderServicesTable(biz.services || []);
+    renderSchedulesTable(biz.work_schedules || []);
+
+    // Cargar agenda del día
+    loadAgenda();
+}
+
+// 9. RENDERIZAR TABLA DE SERVICIOS
+function renderServicesTable(services) {
+    if (!servicesListTable) return;
+    servicesListTable.innerHTML = '';
+
+    if (services.length === 0) {
+        servicesListTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No hay servicios registrados para este negocio.</td>
+            </tr>
+        `;
+        return;
     }
 
-    // E. Vincular envío de formulario de edición (PUT)
-    const editForm = document.getElementById('editBusinessForm');
-    if (editForm) {
-        editForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!editBusiness) return;
-            const bid = parseInt(editBusiness.value, 10);
-            if (!bid) {
-                alert('Por favor selecciona un negocio válido.');
-                return;
-            }
+    for (const s of services) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div class="fw-bold text-dark">${s.name}</div>
+                <small class="text-muted">${s.description || 'Sin descripción'}</small>
+            </td>
+            <td>${s.duration_minutes} min</td>
+            <td class="fw-bold text-primary">$${parseFloat(s.price).toFixed(2)}</td>
+            <td class="text-center">
+                <button class="btn btn-outline-danger btn-sm btn-action-sm btn-delete-service" data-id="${s.id}">
+                    Eliminar
+                </button>
+            </td>
+        `;
+        servicesListTable.appendChild(tr);
+    }
 
-            const payload = {
-                id: bid,
-                name: editName ? editName.value.trim() : "",
-                description: editDesc ? editDesc.value.trim() : "",
-                address: editAddr ? editAddr.value.trim() : "",
-                logo_url: editLogo ? editLogo.value.trim() : "",
-                owner_id: (userId ? parseInt(userId, 10) : null)
-            };
-
-            if (!payload.name) {
-                alert('El nombre del negocio es obligatorio.');
-                return;
-            }
-
-            const res = await request('businesses', 'PUT', payload);
-            let data = null;
-            try { data = await res.json(); } catch(err){}
-
-            if (res.ok) {
-                alert('Información del negocio actualizada correctamente.');
-                // Actualizar la caché local
-                const index = cachedBusinesses.findIndex(b => b.id === bid);
-                if (index !== -1 && data) {
-                    cachedBusinesses[index] = data;
+    // Vincular botones de eliminar servicio
+    servicesListTable.querySelectorAll('.btn-delete-service').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const serviceId = e.target.dataset.id;
+            if (confirm('¿Estás seguro de que deseas eliminar este servicio permanentemente?')) {
+                try {
+                    const res = await fetch(`${apiUrl}/services?id=${serviceId}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (res.ok) {
+                        alert('Servicio eliminado correctamente.');
+                        await refreshBusinessesList();
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error de conexión con el servidor.');
                 }
-                
-                // Recargar desplegables
-                await loadBusinessesInto(serviceBusiness, scheduleBusiness, agendaBusiness, editBusiness);
-                
-                // Re-ejecutar auto-rellenado para consistencia visual
-                autofillEditForm();
-
-                // Notificar a otras vistas
-                document.dispatchEvent(new CustomEvent('businessesUpdated', { detail: { businesses: cachedBusinesses } }));
-            } else {
-                alert('Error al actualizar negocio: ' + (data && data.message ? data.message : res.statusText));
             }
         });
+    });
+}
+
+// 10. RENDERIZAR TABLA DE HORARIOS
+function renderSchedulesTable(schedules) {
+    if (!schedulesListTable) return;
+    schedulesListTable.innerHTML = '';
+
+    if (schedules.length === 0) {
+        schedulesListTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No hay horarios definidos para este negocio.</td>
+            </tr>
+        `;
+        return;
     }
-    
-    // F. Alerta amigable si es dueño nuevo sin negocios registrados
-    if (userRole === 'owner' && (!businesses || businesses.length === 0)) {
-        const target = document.getElementById('agendaResult');
-        if (target) {
-            target.innerHTML = `
-                <div class="alert alert-warning text-center shadow-sm">
-                    <h5 class="fw-bold">¡Bienvenido!</h5>
-                    <p class="mb-0 small text-muted">Aún no tienes ningún negocio registrado. Utiliza el panel de la izquierda para crear tu primer negocio y empezar a configurarlo.</p>
-                </div>
-            `;
+
+    // Ordenar por día de la semana
+    const sorted = [...schedules].sort((a,b) => a.day_of_week - b.day_of_week);
+
+    for (const s of sorted) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold text-dark">${dayNames[s.day_of_week] || 'Desconocido'}</td>
+            <td>${s.start_time.substring(0,5)} hs</td>
+            <td>${s.end_time.substring(0,5)} hs</td>
+            <td class="text-center">
+                <button class="btn btn-outline-danger btn-sm btn-action-sm btn-delete-schedule" data-id="${s.id}">
+                    Eliminar
+                </button>
+            </td>
+        `;
+        schedulesListTable.appendChild(tr);
+    }
+
+    // Vincular botones de eliminar horario
+    schedulesListTable.querySelectorAll('.btn-delete-schedule').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const scheduleId = e.target.dataset.id;
+            if (confirm('¿Estás seguro de que deseas eliminar este horario de atención?')) {
+                try {
+                    const res = await fetch(`${apiUrl}/schedule?id=${scheduleId}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (res.ok) {
+                        alert('Horario de atención eliminado correctamente.');
+                        await refreshBusinessesList();
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error de conexión con el servidor.');
+                }
+            }
+        });
+    });
+}
+
+// 11. CARGAR AGENDA Y ACTUALIZAR TIMELINE
+async function loadAgenda() {
+    if (!currentBusinessId || !agendaResult) return;
+
+    try {
+        const res = await fetch(`${apiUrl}/agenda?business_id=${currentBusinessId}&date=${currentDate}`);
+        if (!res.ok) throw new Error('Error al cargar la agenda');
+        const data = await res.json();
+
+        // Actualizar métrica rápida de hoy (solo si la fecha consultada es la de hoy)
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (currentDate === todayStr && metricTodayAppts) {
+            metricTodayAppts.innerText = data.appointments.length;
         }
+
+        renderTimeline(data.appointments || []);
+    } catch (e) {
+        console.error('Error loading agenda:', e);
+        agendaResult.innerHTML = '<p class="text-danger text-center py-4">Error al cargar turnos del servidor.</p>';
     }
 }
 
+// 12. RENDERIZAR LÍNEA DE TIEMPO (TIMELINE)
+function renderTimeline(appointments) {
+    agendaResult.innerHTML = '';
+
+    if (appointments.length === 0) {
+        agendaResult.innerHTML = `
+            <div class="text-center py-5">
+                <div class="fs-1 text-muted mb-2"><i class="bi bi-calendar-x"></i></div>
+                <p class="text-muted small">No hay turnos agendados para esta fecha.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Ordenar turnos por hora
+    const sorted = [...appointments].sort((a,b) => a.time.localeCompare(b.time));
+
+    const timelineContainer = document.createElement('div');
+    timelineContainer.className = 'timeline-container';
+
+    for (const a of sorted) {
+        const item = document.createElement('div');
+        let statusClass = '';
+        let badgeClass = 'bg-secondary';
+        let statusLabel = 'Pendiente';
+
+        if (a.status === 'completed') {
+            statusClass = 'completed';
+            badgeClass = 'bg-success';
+            statusLabel = 'Completado';
+        } else if (a.status === 'cancelled') {
+            statusClass = 'cancelled';
+            badgeClass = 'bg-danger';
+            statusLabel = 'Cancelado';
+        }
+
+        item.className = `timeline-item ${statusClass}`;
+
+        let actionButtons = '';
+        if (a.status === 'pending') {
+            actionButtons = `
+                <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                    <button class="btn btn-primary btn-sm btn-action-sm btn-complete-appointment" data-id="${a.id}">✓ Completar</button>
+                    <button class="btn btn-outline-danger btn-sm btn-action-sm btn-cancel-appointment" data-id="${a.id}">✕ Cancelar</button>
+                </div>
+            `;
+        }
+
+        const duration = a.service ? a.service.duration_minutes : 30;
+        const price = a.service ? parseFloat(a.service.price).toFixed(2) : '0.00';
+
+        item.innerHTML = `
+            <div class="timeline-time">${a.time.substring(0, 5)} hs</div>
+            <div class="timeline-card">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h6 class="fw-bold mb-1 text-dark">${a.service ? a.service.name : 'Servicio general'}</h6>
+                        <small class="text-muted d-block">Duración: ${duration} minutos | Valor: $${price}</small>
+                        <small class="text-muted d-block mt-1"><i class="bi bi-person me-1"></i> Cliente: <strong>${a.user ? a.user.name : 'Desconocido'}</strong> (${a.user ? a.user.email : '-'})</small>
+                    </div>
+                    <span class="badge ${badgeClass} text-uppercase px-3 py-1 rounded-pill" style="font-size:0.75rem;">${statusLabel}</span>
+                </div>
+                ${actionButtons}
+            </div>
+        `;
+        timelineContainer.appendChild(item);
+    }
+
+    agendaResult.appendChild(timelineContainer);
+
+    // Vincular botones de Completar y Cancelar Turno
+    agendaResult.querySelectorAll('.btn-complete-appointment').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const apptId = e.target.dataset.id;
+            try {
+                const res = await fetch(`${apiUrl}/appointments`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: apptId, status: 'completed' })
+                });
+                if (res.ok) {
+                    await loadAgenda();
+                } else {
+                    const result = await res.json();
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error de conexión al completar el turno.');
+            }
+        });
+    });
+
+    agendaResult.querySelectorAll('.btn-cancel-appointment').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const apptId = e.target.dataset.id;
+            if (confirm('¿Estás seguro de que deseas cancelar esta reserva?')) {
+                try {
+                    const res = await fetch(`${apiUrl}/appointments?id=${apptId}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        await loadAgenda();
+                    } else {
+                        const result = await res.json();
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error de conexión al cancelar el turno.');
+                }
+            }
+        });
+    });
+}
+
+// 13. CONFIGURAR EL ENVÍO DE FORMULARIOS
+function setupFormSubmits() {
+    // A. Formulario: Guardar Servicio
+    if (serviceForm) {
+        serviceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = serviceForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const formData = new FormData(serviceForm);
+            const payload = {
+                business_id: currentBusinessId,
+                name: formData.get('serviceName'),
+                description: formData.get('serviceDescription'),
+                duration_minutes: parseInt(formData.get('serviceDuration'), 10),
+                price: parseFloat(formData.get('servicePrice'))
+            };
+
+            try {
+                const res = await fetch(`${apiUrl}/services`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert('Servicio registrado con éxito.');
+                    serviceForm.reset();
+                    await refreshBusinessesList();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error de conexión.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // B. Formulario: Guardar Horario
+    if (scheduleForm) {
+        scheduleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = scheduleForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const formData = new FormData(scheduleForm);
+            const payload = {
+                business_id: currentBusinessId,
+                day_of_week: parseInt(formData.get('scheduleDay'), 10),
+                start_time: formData.get('scheduleStart'),
+                end_time: formData.get('scheduleEnd')
+            };
+
+            try {
+                const res = await fetch(`${apiUrl}/schedule`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert('Horario de atención configurado con éxito.');
+                    await refreshBusinessesList();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error de conexión.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // C. Formulario: Actualizar Negocio (Settings)
+    if (editBusinessForm) {
+        editBusinessForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = editBusinessForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const payload = {
+                id: currentBusinessId,
+                name: document.getElementById('editBusinessName').value.trim(),
+                description: document.getElementById('editBusinessDescription').value.trim(),
+                address: document.getElementById('editBusinessAddress').value.trim(),
+                logo_url: document.getElementById('editBusinessLogoUrl').value.trim(),
+                owner_id: parseInt(userId, 10)
+            };
+
+            try {
+                const res = await fetch(`${apiUrl}/businesses`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert('Negocio actualizado correctamente.');
+                    await refreshBusinessesList();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error de conexión.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // D. Formulario: Registrar nuevo negocio (Settings)
+    if (registerBusinessForm) {
+        registerBusinessForm.addEventListener('submit', (e) => handleRegisterBusiness(e, registerBusinessForm));
+    }
+
+    // E. Formulario: Registrar primer negocio (Alert)
+    if (firstBusinessForm) {
+        firstBusinessForm.addEventListener('submit', (e) => handleRegisterBusiness(e, firstBusinessForm));
+    }
+}
+
+// 14. PROCESAR CREACIÓN DE NEGOCIO
+async function handleRegisterBusiness(e, formElement) {
+    e.preventDefault();
+    const submitBtn = formElement.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
+    const formData = new FormData(formElement);
+    const payload = {
+        name: formData.get('businessName'),
+        description: formData.get('businessDescription'),
+        address: formData.get('businessAddress'),
+        logo_url: formData.get('businessLogoUrl')
+    };
+
+    try {
+        const res = await fetch(`${apiUrl}/businesses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (res.ok) {
+            alert('Negocio registrado con éxito.');
+            formElement.reset();
+
+            // Si es el primer negocio, actualizar también el rol del usuario en la sesión local
+            const newRole = result.owner && result.owner.role ? result.owner.role : 'owner';
+            localStorage.setItem('userRole', newRole);
+
+            // Recargar lista y seleccionar el nuevo
+            currentBusinessId = result.id;
+            await refreshBusinessesList();
+
+            // Navegar a la pestaña de agenda automáticamente
+            const agendaTabBtn = document.getElementById('agenda-tab');
+            if (agendaTabBtn) {
+                const tab = new bootstrap.Tab(agendaTabBtn);
+                tab.show();
+            }
+        } else {
+            alert('Error: ' + result.message);
+        }
+    } catch (error) {
+        alert('Error de conexión.');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// Inicializar al cargar
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initDashboard);
 } else {
     initDashboard();
 }
-
-// 10. RE-LLENADO ANTE ACTUALIZACIÓN DE EVENTOS
-document.addEventListener('businessesUpdated', (e) => {
-    const serviceBusiness = document.getElementById('serviceBusinessId');
-    const scheduleBusiness = document.getElementById('scheduleBusinessId');
-    const agendaBusiness = document.getElementById('agendaBusinessId');
-    const editBusiness = document.getElementById('editBusinessId');
-    if (!serviceBusiness && !scheduleBusiness && !agendaBusiness && !editBusiness) return;
-    const businesses = e.detail && e.detail.businesses ? e.detail.businesses : [];
-    cachedBusinesses = businesses; // Sincronizar caché
-    
-    function fill(sel) {
-        if (!sel) return;
-        sel.disabled = false; // Habilitar por defecto
-        sel.innerHTML = '';
-        
-        if (businesses.length === 0) {
-            const opt = document.createElement('option');
-            opt.value = '';
-            opt.text = 'No tienes negocios registrados';
-            sel.appendChild(opt);
-            return;
-        }
-
-        if (businesses.length === 1 && userRole === 'owner') {
-            const b = businesses[0];
-            const opt = document.createElement('option');
-            opt.value = b.id;
-            opt.text = b.name;
-            opt.selected = true;
-            sel.appendChild(opt);
-            return;
-        }
-
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.text = '-- Seleccione --';
-        sel.appendChild(placeholder);
-        
-        for (const b of businesses) {
-            const opt = document.createElement('option');
-            opt.value = b.id;
-            opt.text = b.name;
-            sel.appendChild(opt);
-        }
-    }
-    fill(serviceBusiness); fill(scheduleBusiness); fill(agendaBusiness); fill(editBusiness);
-    
-    // Auto-rellenar formulario de edición si es necesario tras el re-llenado
-    try {
-        const editName = document.getElementById('editBusinessName');
-        const editDesc = document.getElementById('editBusinessDescription');
-        const editAddr = document.getElementById('editBusinessAddress');
-        const editLogo = document.getElementById('editBusinessLogoUrl');
-        if (editBusiness && editBusiness.value) {
-            const bid = parseInt(editBusiness.value, 10);
-            const biz = cachedBusinesses.find(b => b.id === bid);
-            if (biz) {
-                if (editName) editName.value = biz.name || "";
-                if (editDesc) editDesc.value = biz.description || "";
-                if (editAddr) editAddr.value = biz.address || "";
-                if (editLogo) editLogo.value = biz.logo_url || "";
-            }
-        }
-    } catch(err){}
-});

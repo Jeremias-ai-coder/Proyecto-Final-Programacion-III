@@ -89,8 +89,8 @@ function renderBusinessCards(items) {
 
         // Elegir si pintar la dirección
         const addressContent = business.address 
-            ? `<p class="mb-2 small text-muted text-truncate" title="${business.address}"><span class="me-1">📍</span>${business.address}</p>`
-            : `<p class="mb-2 small text-muted text-truncate text-secondary italic">📍 Dirección no especificada</p>`;
+            ? `<p class="mb-2 small text-muted text-truncate" title="${business.address}"><i class="bi bi-geo-alt me-1"></i>${business.address}</p>`
+            : `<p class="mb-2 small text-muted text-truncate text-secondary italic"><i class="bi bi-geo-alt me-1"></i>Dirección no especificada</p>`;
         
         const isOwnerOrAdmin = (userId && (business.owner_id == userId || userRole === 'administrator'));
         let dropdownHtml = '';
@@ -119,7 +119,7 @@ function renderBusinessCards(items) {
         const ratingAvg = business.reviews_avg_rating ? parseFloat(business.reviews_avg_rating).toFixed(1) : null;
         const ratingCount = business.reviews_count || 0;
         const ratingHtml = ratingAvg 
-            ? `<span class="badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2" style="width: fit-content;">⭐ ${ratingAvg} (${ratingCount})</span>`
+            ? `<span class="badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2" style="width: fit-content;"><i class="bi bi-star-fill text-warning me-1"></i> ${ratingAvg} (${ratingCount})</span>`
             : `<span class="badge bg-light text-muted border border-light-subtle py-1 px-2 rounded-pill small mb-2" style="width: fit-content;">Sin calificaciones</span>`;
         
         card.innerHTML = `
@@ -240,6 +240,9 @@ async function init() {
                 userProfileSection.style.display = 'block';
                 userProfileSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+        } else if (sectionId === 'reserveSection') {
+            reserveSection.style.display = 'block';
+            reserveSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 
@@ -449,19 +452,124 @@ async function init() {
         }
     });
 
-    // 6. CÁLCULO E INYECCIÓN DE INTERVALOS HORARIOS DISPONIBLES (SLOTS)
-    // Lee la fecha y servicio, consulta al servidor y dibuja las franjas horarias como botones.
+    // 6. WIZARD Y CÁLCULO E INYECCIÓN DE INTERVALOS HORARIOS DISPONIBLES (SLOTS)
+    
+    // Función para cambiar de paso en el Wizard
+    function goToStep(stepNumber) {
+        document.getElementById('panelStep1').style.display = 'none';
+        document.getElementById('panelStep2').style.display = 'none';
+        document.getElementById('panelStep3').style.display = 'none';
+        
+        document.getElementById('stepIndicator1').classList.remove('active');
+        document.getElementById('stepIndicator2').classList.remove('active');
+        document.getElementById('stepIndicator3').classList.remove('active');
+        
+        if (stepNumber === 1) {
+            document.getElementById('panelStep1').style.display = 'block';
+            document.getElementById('stepIndicator1').classList.add('active');
+        } else if (stepNumber === 2) {
+            document.getElementById('panelStep2').style.display = 'block';
+            document.getElementById('stepIndicator2').classList.add('active');
+            refreshAvailableSlots();
+        } else if (stepNumber === 3) {
+            document.getElementById('panelStep3').style.display = 'block';
+            document.getElementById('stepIndicator3').classList.add('active');
+            populateSummary();
+        }
+    }
+
+    // Renderiza la lista de servicios en formato de tarjetas clicables
+    async function renderServicesWizard(businessId, services) {
+        const list = document.getElementById('servicesWizardList');
+        if (!list) return;
+        list.innerHTML = '';
+        
+        if (services.length === 0) {
+            list.innerHTML = '<div class="col-12 text-center text-muted py-4 small">No hay servicios registrados para este negocio.</div>';
+            return;
+        }
+        
+        for (const s of services) {
+            const col = document.createElement('div');
+            col.className = 'col-md-6';
+            col.innerHTML = `
+                <div class="service-card-wizard" data-service-id="${s.id}">
+                    <div class="checkmark-badge">✓</div>
+                    <div>
+                        <div class="fw-bold text-dark mb-1">${s.name}</div>
+                        <div class="text-muted small mb-2 text-truncate-2" style="font-size: 0.8rem; line-height: 1.3;">${s.description || 'Sin descripción'}</div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                        <span class="small text-muted" style="font-size: 0.78rem;"><i class="bi bi-clock me-1"></i> ${s.duration_minutes} min</span>
+                        <span class="fw-bold text-primary" style="font-size: 0.9rem;">$${parseFloat(s.price).toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+            list.appendChild(col);
+        }
+        
+        // Asignar click en las tarjetas
+        list.querySelectorAll('.service-card-wizard').forEach(card => {
+            card.addEventListener('click', () => {
+                list.querySelectorAll('.service-card-wizard').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                
+                // Setear servicio en el input oculto
+                document.getElementById('selectService').value = card.dataset.serviceId;
+                
+                // Avanzar al paso 2
+                goToStep(2);
+            });
+        });
+    }
+
+    // Llena el bloque de confirmación del Paso 3
+    function populateSummary() {
+        const serviceId = document.getElementById('selectService').value;
+        const date = bookingDate.value;
+        const time = bookingTime.value;
+        
+        const services = selectService.services || [];
+        const service = services.find(s => s.id === parseInt(serviceId, 10));
+        
+        if (service) {
+            document.getElementById('summaryServiceName').innerText = service.name;
+            document.getElementById('summaryServiceDesc').innerText = service.description || 'Sin descripción';
+            document.getElementById('summaryPrice').innerText = `$${parseFloat(service.price).toFixed(2)}`;
+        }
+        
+        const dateParts = date.split('-');
+        const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : date;
+        
+        document.getElementById('summaryDateTime').innerText = `${formattedDate} a las ${time.substring(0,5)} hs`;
+    }
+
+    // Calcula e inyecta los slots disponibles agrupados por Mañana y Tarde
     async function refreshAvailableSlots() {
         const businessId = selectedBusinessId.value;
-        const serviceId = selectService.value;
+        const serviceId = document.getElementById('selectService').value;
         const date = bookingDate.value;
 
-        // Limpiar estados previos
         bookingTime.value = '';
-        timeSlotsContainer.innerHTML = '';
-        timeSlotsContainer.style.display = 'none';
+        
+        const slotsGroupMorning = document.getElementById('slotsGroupMorning');
+        const slotsGroupAfternoon = document.getElementById('slotsGroupAfternoon');
+        const slotsEmptyMessage = document.getElementById('slotsEmptyMessage');
+        const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+        
+        const morningGrid = slotsGroupMorning.querySelector('.slots-grid');
+        const afternoonGrid = slotsGroupAfternoon.querySelector('.slots-grid');
+        
+        morningGrid.innerHTML = '';
+        afternoonGrid.innerHTML = '';
+        
+        slotsGroupMorning.style.display = 'none';
+        slotsGroupAfternoon.style.display = 'none';
+        slotsEmptyMessage.style.display = 'none';
+        timeSlotsContainer.style.display = 'block';
 
         if (!businessId || !serviceId || !date) {
+            timeSlotsContainer.style.display = 'none';
             return;
         }
 
@@ -472,34 +580,34 @@ async function init() {
         const todayLocal = `${year}-${month}-${day}`;
 
         if (date < todayLocal) {
-            timeSlotsContainer.style.display = 'block';
-            timeSlotsContainer.innerHTML = '<div class="alert alert-warning py-2 text-center small fw-semibold">No se pueden agendar turnos en el pasado.</div>';
+            slotsEmptyMessage.innerText = '⚠️ No se pueden agendar turnos en el pasado.';
+            slotsEmptyMessage.style.display = 'block';
             return;
         }
 
-        timeSlotsContainer.style.display = 'block';
-        timeSlotsContainer.innerHTML = '<div class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm me-2 text-primary" role="status"></div>Calculando horarios disponibles...</div>';
+        slotsEmptyMessage.innerHTML = '<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm me-2 text-primary" role="status"></div>Calculando horarios...</div>';
+        slotsEmptyMessage.style.display = 'block';
 
         try {
-            // Consultamos la agenda existente de ese día a la API
             const res = await fetch(`${apiUrl}/agenda?business_id=${businessId}&date=${date}`);
             if (!res.ok) {
-                timeSlotsContainer.innerHTML = '<div class="alert alert-danger py-2 text-center">Error al cargar la agenda del día.</div>';
+                slotsEmptyMessage.innerText = '❌ Error al cargar la agenda del negocio.';
                 return;
             }
 
             const data = await res.json();
+            slotsEmptyMessage.style.display = 'none';
 
-            // Si el negocio no tiene horarios declarados de atención ese día
             if (!data.schedules || !data.schedules.length) {
-                timeSlotsContainer.innerHTML = '<div class="alert alert-warning py-2 text-center small fw-semibold">El negocio no abre el día seleccionado.</div>';
+                slotsEmptyMessage.innerText = '🗓️ El negocio no abre el día seleccionado.';
+                slotsEmptyMessage.style.display = 'block';
                 return;
             }
 
-            const service = selectService.services ? selectService.services.find(s => s.id === parseInt(serviceId, 10)) : null;
+            const services = selectService.services || [];
+            const service = services.find(s => s.id === parseInt(serviceId, 10));
             const duration = service ? service.duration_minutes : 30;
 
-            // Funciones helpers para operaciones temporales en minutos
             function timeToMinutes(timeStr) {
                 const [h, m] = timeStr.split(':');
                 return parseInt(h, 10) * 60 + parseInt(m, 10);
@@ -513,38 +621,28 @@ async function init() {
 
             const slots = [];
             const addedSlots = new Set();
-            const slotStep = 30; // Intervalo entre inicio de turnos (30 minutos)
+            const slotStep = 30;
 
-            // Para cada jornada laboral de ese día de la semana
             for (const sched of data.schedules) {
                 const startMin = timeToMinutes(sched.start_time);
                 const endMin = timeToMinutes(sched.end_time);
 
-                // Generamos franjas horarias
                 for (let timeMin = startMin; timeMin + duration <= endMin; timeMin += slotStep) {
-                    // Si es hoy, evitar franjas que ya pasaron
                     const currentMinutes = now.getHours() * 60 + now.getMinutes();
                     if (date === todayLocal && timeMin <= currentMinutes) {
                         continue;
                     }
 
                     const slotStartStr = minutesToTime(timeMin);
+                    if (addedSlots.has(slotStartStr)) continue;
 
-                    // Evitar duplicar horarios si hay configuraciones de horarios repetidas o solapadas
-                    if (addedSlots.has(slotStartStr)) {
-                        continue;
-                    }
-
-                    // VALIDACIÓN DE COLISIÓN O SOLAPAMIENTO: Comprobamos si cruza con alguna reserva previa activa
                     let isOccupied = false;
                     for (const appt of data.appointments || []) {
                         if (appt.status === 'cancelled') continue;
-
                         const apptStartMin = timeToMinutes(appt.time);
                         const apptDuration = appt.service ? appt.service.duration_minutes : 30;
                         const apptEndMin = apptStartMin + apptDuration;
 
-                        // Condición de colisión temporal
                         if (timeMin < apptEndMin && (timeMin + duration) > apptStartMin) {
                             isOccupied = true;
                             break;
@@ -553,92 +651,140 @@ async function init() {
 
                     slots.push({
                         time: slotStartStr,
+                        minutes: timeMin,
                         isOccupied
                     });
                     addedSlots.add(slotStartStr);
                 }
             }
 
-            timeSlotsContainer.innerHTML = '';
-
             if (slots.length === 0) {
-                timeSlotsContainer.innerHTML = '<div class="alert alert-warning py-2 text-center">No hay horarios que cubran la duración del servicio hoy.</div>';
+                slotsEmptyMessage.innerText = '⚠️ No hay turnos que cubran la duración del servicio hoy.';
+                slotsEmptyMessage.style.display = 'block';
                 return;
             }
 
-            // Dibujar selector visual
-            const label = document.createElement('label');
-            label.className = 'form-label fw-semibold w-100 mb-2';
-            label.innerText = 'Selecciona un horario disponible:';
-            timeSlotsContainer.appendChild(label);
-
-            const grid = document.createElement('div');
-            grid.className = 'd-flex flex-wrap gap-2 justify-content-center my-2';
+            let morningCount = 0;
+            let afternoonCount = 0;
 
             slots.forEach(slot => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.dataset.time = slot.time;
-
+                btn.innerText = slot.time + ' hs';
+                
                 if (slot.isOccupied) {
-                    btn.className = 'btn btn-light text-muted opacity-50 px-3 py-2 border-0';
-                    btn.disabled = true; // Deshabilitado para que no haga clic
-                    btn.style.textDecoration = 'line-through';
-                    btn.title = 'Horario ocupado';
+                    btn.className = 'btn btn-slot-pill';
+                    btn.disabled = true;
+                    btn.title = 'Ocupado';
                 } else {
-                    btn.className = 'btn btn-outline-primary btn-sm px-3 py-2 btn-slot-picker';
+                    btn.className = 'btn btn-slot-pill btn-slot-picker';
                 }
-                btn.innerText = slot.time;
-                grid.appendChild(btn);
+
+                if (slot.minutes < 780) { // Antes de las 13:00 hs
+                    morningGrid.appendChild(btn);
+                    morningCount++;
+                } else {
+                    afternoonGrid.appendChild(btn);
+                    afternoonCount++;
+                }
             });
 
-            timeSlotsContainer.appendChild(grid);
+            if (morningCount > 0) slotsGroupMorning.style.display = 'block';
+            if (afternoonCount > 0) slotsGroupAfternoon.style.display = 'block';
+            
+            if (morningCount === 0 && afternoonCount === 0) {
+                slotsEmptyMessage.innerText = '⚠️ No hay turnos disponibles para esta fecha.';
+                slotsEmptyMessage.style.display = 'block';
+            }
 
-            // Escuchar la selección de una píldora de horario
-            grid.addEventListener('click', (e) => {
+            const handleSlotSelect = (e) => {
                 const clickedBtn = e.target.closest('.btn-slot-picker');
                 if (!clickedBtn) return;
 
-                grid.querySelectorAll('.btn-slot-picker').forEach(b => {
-                    b.classList.remove('btn-primary', 'active');
-                    b.classList.add('btn-outline-primary');
+                timeSlotsContainer.querySelectorAll('.btn-slot-picker').forEach(b => {
+                    b.classList.remove('active');
                 });
 
-                clickedBtn.classList.remove('btn-outline-primary');
-                clickedBtn.classList.add('btn-primary', 'active');
-
-                // Cargamos el horario al campo hidden del formulario para el submit
+                clickedBtn.classList.add('active');
                 bookingTime.value = clickedBtn.dataset.time;
-            });
+                
+                goToStep(3);
+            };
+
+            morningGrid.addEventListener('click', handleSlotSelect);
+            afternoonGrid.addEventListener('click', handleSlotSelect);
 
         } catch (error) {
-            console.error('Error cargando disponibilidad de horarios:', error);
-            timeSlotsContainer.innerHTML = '<div class="alert alert-danger py-2 text-center">Error al conectar con el servidor de agendas.</div>';
+            console.error('Error loading available slots:', error);
+            slotsEmptyMessage.innerText = '❌ Error de conexión al servidor.';
+            slotsEmptyMessage.style.display = 'block';
         }
     }
 
     bookingDate.addEventListener('change', refreshAvailableSlots);
-    selectService.addEventListener('change', refreshAvailableSlots);
 
     // Preparar el formulario de reserva con los datos del negocio clicado
     async function prepareBooking(business) {
-        reserveSection.style.display = 'block';
-        selectedBusinessName.value = business.name;
-        selectedBusinessId.value = business.id;
-        selectedBusinessName.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        const services = await fetchServices(business.id);
-        selectService.services = services; // Almacena para consultar duración al vuelo
-        populateSelect(selectService, services, s => `${s.name} ($${s.price})`);
-        if (!services.length) {
-            selectService.innerHTML = '<option value="">No hay servicios disponibles</option>';
+        showSection('reserveSection');
+        
+        // Actualizar datos del negocio en la columna izquierda
+        document.getElementById('bookingBusinessName').innerText = business.name;
+        document.getElementById('bookingBusinessAddress').innerHTML = business.address ? `<i class="bi bi-geo-alt me-1"></i> ${business.address}` : '<i class="bi bi-geo-alt me-1"></i> Dirección comercial no especificada';
+        
+        // Logo / Iniciales
+        const initials = (business.name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+        const logoContainer = document.getElementById('bookingBusinessLogoContainer');
+        if (business.logo_url) {
+            logoContainer.innerHTML = `<img src="${business.logo_url}" class="w-100 h-100 object-fit-cover rounded-circle" alt="${business.name}" onerror="this.outerHTML='<span class=&quot;fs-4 fw-bold text-primary&quot;>${initials}</span>'">`;
+        } else {
+            logoContainer.innerHTML = `<span class="fs-4 fw-bold text-primary">${initials || 'TY'}</span>`;
         }
-
+        
+        // Rating
+        const ratingAvg = business.reviews_avg_rating ? parseFloat(business.reviews_avg_rating).toFixed(1) : null;
+        const ratingCount = business.reviews_count || 0;
+        document.getElementById('bookingBusinessRating').innerHTML = ratingAvg ? `<i class="bi bi-star-fill text-warning me-1"></i> ${ratingAvg} (${ratingCount})` : 'Sin calificaciones';
+        
+        selectedBusinessId.value = business.id;
+        
+        // Cargar servicios en Paso 1
+        const servicesWizardList = document.getElementById('servicesWizardList');
+        servicesWizardList.innerHTML = '<div class="text-center py-4 w-100"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
+        
+        const services = await fetchServices(business.id);
+        selectService.services = services; // Guardar
+        await renderServicesWizard(business.id, services);
+        
         // Reset
+        document.getElementById('selectService').value = '';
         bookingDate.value = '';
         bookingTime.value = '';
-        timeSlotsContainer.innerHTML = '';
-        timeSlotsContainer.style.display = 'none';
+        document.getElementById('timeSlotsContainer').style.display = 'none';
+        
+        goToStep(1);
+    }
+
+    // Vincular botones de navegación del Wizard
+    const btnCancelBooking = document.getElementById('btnCancelBooking');
+    if (btnCancelBooking) {
+        btnCancelBooking.addEventListener('click', () => {
+            showSection('grid');
+        });
+    }
+    
+    const btnBackToStep1 = document.getElementById('btnBackToStep1');
+    if (btnBackToStep1) {
+        btnBackToStep1.addEventListener('click', () => {
+            goToStep(1);
+        });
+    }
+    
+    const btnBackToStep2 = document.getElementById('btnBackToStep2');
+    if (btnBackToStep2) {
+        btnBackToStep2.addEventListener('click', () => {
+            goToStep(2);
+        });
     }
 
     // Registrar envío de reservas
@@ -663,24 +809,45 @@ async function init() {
             return;
         }
 
-        const res = await fetch(`${apiUrl}/appointments`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (res.ok) {
-            alert('Turno reservado exitosamente: ' + (data.id || JSON.stringify(data)));
-            form.reset();
-            reserveSection.style.display = 'none';
-            // Refrescar tarjetas de negocios para reflejar colisiones de inmediato
-            refreshBusinesses();
-        } else {
-            alert('Error al reservar: ' + (data.message || JSON.stringify(data)));
+        try {
+            const res = await fetch(`${apiUrl}/appointments`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Turno reservado exitosamente.');
+                form.reset();
+                showSection('grid');
+                refreshBusinesses();
+            } else {
+                alert('Error al reservar: ' + (data.message || JSON.stringify(data)));
+            }
+        } catch (error) {
+            alert('Error de conexión con el servidor.');
         }
     });
 
     // 7. CARGAR Y RENDERIZAR HISTORIAL DE CITAS DE CLIENTE
     async function refreshMyAppointmentsList() {
         if (!userId) return;
+        
+        function getLocalDateString(dateStr) {
+            if (!dateStr) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                return dateStr;
+            }
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) {
+                return dateStr.split('T')[0];
+            }
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
         
         const appointmentsList = document.getElementById('appointmentsList');
         const appointmentsHistoryList = document.getElementById('appointmentsHistoryList');
@@ -721,12 +888,11 @@ async function init() {
                     const serviceName = appt.service ? appt.service.name : 'Servicio';
                     const price = appt.service ? appt.service.price : '0.00';
                     
-                    const rawDate = appt.date ? appt.date.split('T')[0] : '';
+                    const rawDate = getLocalDateString(appt.date);
                     const dateParts = rawDate.split('-');
                     const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : rawDate;
                     const formattedTime = appt.time ? appt.time.substring(0, 5) : '';
 
-                    let badgeClass = 'bg-primary';
                     let statusLabel = 'Pendiente';
 
                     // Cancelable rule
@@ -738,21 +904,49 @@ async function init() {
                         showCancelButton = true;
                     }
 
+                    const cancelBadge = showCancelButton 
+                        ? `<span class="badge-cancel-active">✓ Cancelable</span>`
+                        : `<span class="badge-cancel-locked" title="Los turnos solo pueden cancelarse con 24 horas de anticipación.">🔒 Fijo</span>`;
+
+                    const initials = (bizName || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+                    const bizLogo = appt.business && appt.business.logo_url 
+                        ? `<img src="${appt.business.logo_url}" class="rounded-circle shadow-sm" style="width: 40px; height: 40px; object-fit: cover; border: 1px solid #e2e8f0;" alt="${bizName}" onerror="this.outerHTML='<div class=&quot;user-avatar-circle-nav bg-light-primary&quot; style=&quot;width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #009ee3; background-color: #f0f7ff; border: 1px solid #e2e8f0;&quot;>${initials}</div>'">`
+                        : `<div class="user-avatar-circle-nav" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #009ee3; background-color: #f0f7ff; border: 1px solid #e2e8f0;">${initials || 'TY'}</div>`;
+
                     card.innerHTML = `
-                        <div class="card shadow-sm h-100 border-start border-4 border-primary">
-                            <div class="card-body p-3 d-flex flex-column">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="fw-bold text-truncate mb-0 text-dark" style="max-width: 70%;">${bizName}</h6>
-                                    <span class="badge ${badgeClass}">${statusLabel}</span>
-                                </div>
-                                <p class="mb-1 small text-muted"><strong>Servicio:</strong> ${serviceName} ($${price})</p>
-                                <p class="mb-2 small text-muted"><strong>Fecha:</strong> ${formattedDate} — <strong>Hora:</strong> ${formattedTime} hs</p>
-                                ${showCancelButton ? `
-                                    <div class="mt-auto pt-2 border-top">
-                                        <button class="btn btn-outline-danger btn-sm w-100 btn-cancel-appt" data-appt-id="${appt.id}">Cancelar Turno</button>
+                        <div class="ticket-card h-100">
+                            <div class="ticket-body">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    ${bizLogo}
+                                    <div class="overflow-hidden">
+                                        <h6 class="fw-bold text-truncate mb-0 text-dark" style="font-size: 1rem; max-width: 140px;">${bizName}</h6>
+                                        <span class="badge bg-primary mt-1" style="font-size: 0.72rem; padding: 3px 8px;">${statusLabel}</span>
                                     </div>
-                                ` : ''}
+                                </div>
+                                <div class="mb-2">
+                                    <div class="text-secondary fw-semibold" style="font-size: 0.85rem;">Servicio</div>
+                                    <div class="text-dark fw-bold text-truncate" style="font-size: 0.95rem;" title="${serviceName}">${serviceName}</div>
+                                    <div class="text-primary fw-bold" style="font-size: 0.9rem;">$${parseFloat(price).toFixed(2)}</div>
+                                </div>
+                                <div class="mt-auto bg-light p-2 rounded border border-light-subtle d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 500;">Fecha y Hora</div>
+                                        <div class="fw-bold text-dark" style="font-size: 0.82rem;">${formattedDate} a las ${formattedTime} hs</div>
+                                    </div>
+                                    ${cancelBadge}
+                                </div>
                             </div>
+                            ${showCancelButton ? `
+                                <div class="ticket-divider"></div>
+                                <div class="ticket-footer">
+                                    <button class="btn btn-light-danger btn-sm w-100 btn-cancel-appt d-flex align-items-center justify-content-center gap-2" data-appt-id="${appt.id}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16">
+                                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+                                        </svg>
+                                        Cancelar Turno
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                     if (appointmentsList) appointmentsList.appendChild(card);
@@ -773,7 +967,7 @@ async function init() {
                     const serviceName = appt.service ? appt.service.name : 'Servicio';
                     const price = appt.service ? appt.service.price : '0.00';
                     
-                    const rawDate = appt.date ? appt.date.split('T')[0] : '';
+                    const rawDate = getLocalDateString(appt.date);
                     const dateParts = rawDate.split('-');
                     const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : rawDate;
                     const formattedTime = appt.time ? appt.time.substring(0, 5) : '';
@@ -781,41 +975,60 @@ async function init() {
                     let badgeClass = appt.status === 'completed' ? 'bg-success' : 'bg-danger';
                     let statusLabel = appt.status === 'completed' ? 'Completado' : 'Cancelado';
 
+                    const initials = (bizName || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+                    const bizLogo = appt.business && appt.business.logo_url 
+                        ? `<img src="${appt.business.logo_url}" class="rounded-circle shadow-sm" style="width: 40px; height: 40px; object-fit: cover; border: 1px solid #e2e8f0;" alt="${bizName}" onerror="this.outerHTML='<div class=&quot;user-avatar-circle-nav bg-light-primary&quot; style=&quot;width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #009ee3; background-color: #f0f7ff; border: 1px solid #e2e8f0;&quot;>${initials}</div>'">`
+                        : `<div class="user-avatar-circle-nav" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #009ee3; background-color: #f0f7ff; border: 1px solid #e2e8f0;">${initials || 'TY'}</div>`;
+
                     let actionHtml = '';
                     if (appt.status === 'completed') {
                         if (appt.review) {
                             // Ya calificado
                             const stars = '★'.repeat(appt.review.rating) + '☆'.repeat(5 - appt.review.rating);
                             actionHtml = `
-                                <div class="mt-auto pt-2 border-top">
-                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                <div class="ticket-divider"></div>
+                                <div class="ticket-footer">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="small text-muted fw-bold">Tu calificación:</span>
-                                        <span class="review-star fw-bold fs-5">${stars}</span>
+                                        <span class="review-star fw-bold fs-6">${stars}</span>
                                     </div>
-                                    ${appt.review.comment ? `<p class="mb-0 small text-muted italic p-2 rounded" style="background:#f1f5f9; border-left: 3px solid #ffb800; font-size:0.8rem;">"${appt.review.comment}"</p>` : ''}
+                                    ${appt.review.comment ? `<p class="mb-0 small text-muted italic p-2 rounded" style="background:#f8fafc; border-left: 3px solid #ffb800; font-size:0.78rem; line-height: 1.3;">"${appt.review.comment}"</p>` : ''}
                                 </div>
                             `;
                         } else {
                             // Sin calificar
                             actionHtml = `
-                                <div class="mt-auto pt-2 border-top">
-                                    <button class="btn btn-outline-primary btn-sm w-100 btn-open-rate-modal" data-appt-id="${appt.id}">Calificar Servicio</button>
+                                <div class="ticket-divider"></div>
+                                <div class="ticket-footer">
+                                    <button class="btn btn-light-primary btn-sm w-100 btn-open-rate-modal d-flex align-items-center justify-content-center gap-2" data-appt-id="${appt.id}">
+                                        Calificar Servicio
+                                    </button>
                                 </div>
                             `;
                         }
                     }
 
                     card.innerHTML = `
-                        <div class="card shadow-sm h-100 border-start border-4 ${appt.status === 'completed' ? 'border-success' : 'border-danger'}">
-                            <div class="card-body p-3 d-flex flex-column">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="fw-bold text-truncate mb-0 text-dark" style="max-width: 70%;">${bizName}</h6>
-                                    <span class="badge ${badgeClass}">${statusLabel}</span>
+                        <div class="ticket-card h-100" style="border-left: 4px solid ${appt.status === 'completed' ? '#00a650' : '#d93838'};">
+                            <div class="ticket-body">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    ${bizLogo}
+                                    <div class="overflow-hidden">
+                                        <h6 class="fw-bold text-truncate mb-0 text-dark" style="font-size: 1rem; max-width: 140px;">${bizName}</h6>
+                                        <span class="badge ${badgeClass} mt-1" style="font-size: 0.72rem; padding: 3px 8px;">${statusLabel}</span>
+                                    </div>
                                 </div>
-                                <p class="mb-1 small text-muted"><strong>Servicio:</strong> ${serviceName} ($${price})</p>
-                                <p class="mb-2 small text-muted"><strong>Fecha:</strong> ${formattedDate} — <strong>Hora:</strong> ${formattedTime} hs</p>
-                                ${actionHtml}
+                                <div class="mb-2">
+                                    <div class="text-secondary fw-semibold" style="font-size: 0.85rem;">Servicio</div>
+                                    <div class="text-dark fw-bold text-truncate" style="font-size: 0.95rem;" title="${serviceName}">${serviceName}</div>
+                                    <div class="text-muted fw-bold" style="font-size: 0.9rem;">$${parseFloat(price).toFixed(2)}</div>
+                                </div>
+                                <div class="mt-auto bg-light p-2 rounded border border-light-subtle">
+                                    <div class="text-muted" style="font-size: 0.72rem; font-weight: 500;">Fecha y Hora</div>
+                                    <div class="fw-bold text-secondary" style="font-size: 0.82rem;">${formattedDate} a las ${formattedTime} hs</div>
+                                </div>
                             </div>
+                            ${actionHtml}
                         </div>
                     `;
                     if (appointmentsHistoryList) appointmentsHistoryList.appendChild(card);
@@ -1021,8 +1234,8 @@ async function init() {
                 : `<div class="avatar fs-2 mx-auto" style="width: 100px; height: 100px; border-radius: 12px; background: linear-gradient(135deg, #e6f5fc, #ffffff); color: #009ee3; display: flex; align-items: center; justify-content: center; font-weight: 800; border: 1px solid #cce9f8;">${initials || 'TY'}</div>`;
 
             const addressHtml = business.address 
-                ? `<p class="mb-3 fs-6 text-muted"><span class="me-1">📍</span><strong>Dirección:</strong> ${business.address}</p>`
-                : `<p class="mb-3 fs-6 text-muted italic"><span class="me-1">📍</span><strong>Dirección:</strong> No especificada</p>`;
+                ? `<p class="mb-3 fs-6 text-muted"><i class="bi bi-geo-alt me-1"></i><strong>Dirección:</strong> ${business.address}</p>`
+                : `<p class="mb-3 fs-6 text-muted italic"><i class="bi bi-geo-alt me-1"></i><strong>Dirección:</strong> No especificada</p>`;
 
             // Mapear horarios
             const dayNames = {
@@ -1052,7 +1265,7 @@ async function init() {
                     if (reviews && reviews.length > 0) {
                         const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
                         const avg = (sum / reviews.length).toFixed(1);
-                        bizRatingSummary = `⭐ <span class="fw-bold text-dark">${avg}</span> <span class="text-muted">/ 5 (${reviews.length} valoraciones)</span>`;
+                        bizRatingSummary = `<i class="bi bi-star-fill text-warning me-1"></i> <span class="fw-bold text-dark">${avg}</span> <span class="text-muted">/ 5 (${reviews.length} valoraciones)</span>`;
                         
                         reviewsHtml = reviews.map(r => {
                             const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
@@ -1103,7 +1316,7 @@ async function init() {
                     <div class="row g-4 mt-2">
                         <div class="col-md-6">
                             <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle">
-                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">🕒 Horarios de Atención</h6>
+                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-2"><i class="bi bi-clock"></i> Horarios de Atención</h6>
                                 <div class="px-1">
                                     ${schedulesHtml}
                                 </div>
@@ -1111,7 +1324,7 @@ async function init() {
                         </div>
                         <div class="col-md-6">
                             <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle d-flex flex-column">
-                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">⭐ Reseñas de Clientes</h6>
+                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-2"><i class="bi bi-star-fill text-warning"></i> Reseñas de Clientes</h6>
                                 <div class="flex-grow-1 px-1" style="max-height: 250px; overflow-y: auto;">
                                     ${reviewsHtml}
                                 </div>

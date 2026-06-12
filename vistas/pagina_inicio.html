@@ -3,38 +3,47 @@ require_once __DIR__ . '/../src/bootstrap.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Turnos Ya - Inicio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <style>
         body {
-            background-color: #f5f8fa; /* Grisáceo muy claro y limpio */
+            background-color: #f5f8fa;
+            /* Grisáceo muy claro y limpio */
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: #1e293b;
         }
+
         .navbar-custom {
-            background-color: #009ee3; /* Celeste Mercado Libre */
+            background-color: #009ee3;
+            /* Celeste Mercado Libre */
             box-shadow: 0 4px 12px rgba(0, 158, 227, 0.08);
         }
+
         .search-group {
             position: relative;
             background: #ffffff;
             border-radius: 24px;
             border: 1px solid #e2e8f0;
-            box-shadow: 0 2px 6px rgba(0,0,0,.03);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .03);
             display: flex;
             align-items: center;
             overflow: hidden;
             transition: all 0.2s ease;
             padding: 2px;
         }
+
         .search-group:focus-within {
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
             border-color: #ffffff;
         }
+
         .search-bar {
             border: none !important;
             box-shadow: none !important;
@@ -44,6 +53,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
             background: transparent !important;
             color: #1e293b;
         }
+
         .btn-search {
             background-color: #009ee3;
             border: none;
@@ -58,92 +68,106 @@ require_once __DIR__ . '/../src/bootstrap.php';
             margin-right: 2px;
             flex-shrink: 0;
         }
+
         .btn-search:hover {
             background-color: #0081bb;
             transform: scale(1.05);
         }
+
         .btn-search:active {
             transform: scale(0.95);
         }
-        
+
         /* Tarjetas de negocios al estilo de Mercado Libre */
-        .ml-card { 
-            background: #ffffff; 
-            border-radius: 14px; 
+        .ml-card {
+            background: #ffffff;
+            border-radius: 14px;
             position: relative;
-            border: 1px solid #e2e8f0; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
             transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .ml-card:hover { 
-            transform: translateY(-4px); 
-            box-shadow: 0 10px 24px rgba(0, 158, 227, 0.08); 
-            border-color: #009ee3; 
+
+        .ml-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 24px rgba(0, 158, 227, 0.08);
+            border-color: #009ee3;
         }
-        .ml-card .ml-image { 
-            height: 140px; 
-            background: linear-gradient(180deg, #f8fbfd, #ffffff); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+
+        .ml-card .ml-image {
+            height: 140px;
+            background: linear-gradient(180deg, #f8fbfd, #ffffff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border-bottom: 1px solid #f1f5f9;
             border-top-left-radius: 13px;
             border-top-right-radius: 13px;
         }
-        .ml-card .ml-image .avatar { 
-            width: 72px; 
-            height: 72px; 
-            border-radius: 12px; 
-            background: linear-gradient(135deg, #e6f5fc, #ffffff); 
-            color: #009ee3; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-weight: 800; 
-            font-size: 1.3rem; 
+
+        .ml-card .ml-image .avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #e6f5fc, #ffffff);
+            color: #009ee3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.3rem;
             border: 1px solid #cce9f8;
             box-shadow: 0 4px 10px rgba(0, 158, 227, 0.05);
         }
-        .ml-card .card-body { 
-            padding: 16px; 
+
+        .ml-card .card-body {
+            padding: 16px;
         }
-        .ml-card .card-title { 
-            color: #0f172a; 
-            font-size: 1.05rem; 
+
+        .ml-card .card-title {
+            color: #0f172a;
+            font-size: 1.05rem;
             font-weight: 700;
-            margin-bottom: 6px; 
+            margin-bottom: 6px;
         }
-        .ml-card .card-text { 
-            color: #64748b; 
-            font-size: 0.88rem; 
+
+        .ml-card .card-text {
+            color: #64748b;
+            font-size: 0.88rem;
             line-height: 1.4;
         }
-        .ml-card .actions { 
-            gap: 10px; 
+
+        .ml-card .actions {
+            gap: 10px;
             border-top: 1px solid #f1f5f9;
             padding-top: 12px;
             margin-top: auto;
         }
-        
+
         /* Controles personalizados (estilo plano de Mercado Libre) */
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 8px;
             border: 1px solid #cbd5e1;
             padding: 10px 14px;
             font-size: 0.95rem;
             transition: all 0.18s ease;
         }
-        .form-control:focus, .form-select:focus {
+
+        .form-control:focus,
+        .form-select:focus {
             border-color: #009ee3;
             box-shadow: 0 0 0 3px rgba(0, 158, 227, 0.12);
             outline: none;
         }
+
         .custom-card {
             border-radius: 14px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.03);
             background-color: #ffffff;
         }
+
         .btn-primary {
             background-color: #009ee3;
             border: none;
@@ -151,11 +175,13 @@ require_once __DIR__ . '/../src/bootstrap.php';
             border-radius: 8px;
             transition: all 0.18s ease;
         }
+
         .btn-primary:hover {
             background-color: #0081bb;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 158, 227, 0.15);
         }
+
         .btn-outline-primary {
             color: #009ee3;
             border: 1.5px solid #009ee3;
@@ -163,11 +189,13 @@ require_once __DIR__ . '/../src/bootstrap.php';
             border-radius: 8px;
             transition: all 0.18s ease;
         }
+
         .btn-outline-primary:hover {
             background-color: #009ee3;
             border-color: #009ee3;
             color: #ffffff;
         }
+
         .btn-light {
             background-color: #f1f5f9;
             border: 1px solid #e2e8f0;
@@ -175,11 +203,12 @@ require_once __DIR__ . '/../src/bootstrap.php';
             font-weight: 600;
             border-radius: 8px;
         }
+
         .btn-light:hover {
             background-color: #e2e8f0;
             color: #1e293b;
         }
-        
+
         /* Etiquetas de estado en tonos pastel para citas (aspecto SaaS Premium) */
         .badge.bg-primary {
             background-color: #e6f5fc !important;
@@ -189,6 +218,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
             padding: 6px 12px;
             border-radius: 20px;
         }
+
         .badge.bg-success {
             background-color: #e6f7ed !important;
             color: #00a650 !important;
@@ -197,6 +227,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
             padding: 6px 12px;
             border-radius: 20px;
         }
+
         .badge.bg-danger {
             background-color: #fbebee !important;
             color: #d93838 !important;
@@ -205,6 +236,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
             padding: 6px 12px;
             border-radius: 20px;
         }
+
         .badge.bg-secondary {
             background-color: #f1f5f9 !important;
             color: #475569 !important;
@@ -213,7 +245,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
             padding: 6px 12px;
             border-radius: 20px;
         }
-        
+
         /* Estilos para Calificación por Estrellas */
         .star-rating .star-item {
             font-size: 2.5rem;
@@ -221,22 +253,29 @@ require_once __DIR__ . '/../src/bootstrap.php';
             cursor: pointer;
             transition: transform 0.1s ease, color 0.1s ease;
         }
+
         .star-rating .star-item:hover {
             transform: scale(1.15);
         }
+
         .star-rating .star-item.selected,
         .star-rating .star-item.hover {
-            color: #ffb800; /* Dorado premium */
+            color: #ffb800;
+            /* Dorado premium */
         }
+
         .cursor-pointer {
             cursor: pointer;
         }
+
         .review-star {
             color: #ffb800;
         }
+
         .review-star-empty {
             color: #cbd5e1;
         }
+
         .review-card {
             background-color: #f8fafc;
             border: 1px solid #f1f5f9;
@@ -257,15 +296,18 @@ require_once __DIR__ . '/../src/bootstrap.php';
             justify-content: center;
             font-size: 1rem;
             border: 2px solid #ffffff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
             transition: transform 0.15s ease;
         }
+
         .user-avatar-circle-nav:hover {
             transform: scale(1.05);
         }
+
         .dropdown-menu .dropdown-item:active {
             background-color: #009ee3 !important;
         }
+
         .logo-nav {
             width: 34px;
             height: 34px;
@@ -279,17 +321,308 @@ require_once __DIR__ . '/../src/bootstrap.php';
             border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         }
+
+        /* Wizard Steps Layout */
+        .step-indicator {
+            opacity: 0.55;
+            transition: all 0.25s ease;
+        }
+        .step-indicator.active {
+            opacity: 1;
+        }
+        .step-indicator .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.2);
+            color: #ffffff;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+            transition: all 0.25s ease;
+        }
+        .step-indicator.active .step-num {
+            background-color: #ffffff;
+            color: #009ee3;
+            border-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Service Cards Selection */
+        .service-card-wizard {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.22s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+        .service-card-wizard:hover {
+            border-color: #009ee3;
+            box-shadow: 0 4px 12px rgba(0, 158, 227, 0.05);
+            transform: translateY(-1px);
+        }
+        .service-card-wizard.selected {
+            border-color: #009ee3;
+            background-color: #f6fbfd;
+            box-shadow: 0 0 0 3px rgba(0, 158, 227, 0.08);
+        }
+        .service-card-wizard .checkmark-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #009ee3;
+            color: white;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .service-card-wizard.selected .checkmark-badge {
+            display: flex;
+        }
+        
+        /* Time Slots Styling */
+        .btn-slot-pill {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            color: #334155;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.18s ease;
+            cursor: pointer;
+        }
+        .btn-slot-pill:hover:not(:disabled) {
+            border-color: #009ee3;
+            color: #009ee3;
+            background-color: #f6fbfd;
+        }
+        .btn-slot-pill.active {
+            background-color: #009ee3 !important;
+            border-color: #009ee3 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(0, 158, 227, 0.2);
+        }
+        .btn-slot-pill:disabled {
+            background-color: #f1f5f9;
+            border-color: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        
+        .text-truncate-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* TICKET CARD SYSTEM (Rediseño de Citas) */
+        .ticket-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+            overflow: hidden;
+        }
+        .ticket-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 158, 227, 0.06);
+            border-color: #009ee3;
+        }
+        /* Muescas laterales del Ticket */
+        .ticket-card::before, .ticket-card::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background-color: #f5f8fa; /* Mismo color del fondo de la página */
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5;
+            border: 1px solid #e2e8f0;
+        }
+        .ticket-card::before {
+            left: -8px;
+        }
+        .ticket-card::after {
+            right: -8px;
+        }
+        .ticket-body {
+            padding: 20px 24px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .ticket-divider {
+            border-top: 1px dashed #cbd5e1;
+            margin: 0 20px;
+            position: relative;
+            z-index: 2;
+        }
+        .ticket-footer {
+            padding: 16px 24px;
+            background-color: #fafbfc;
+            border-top: 1px solid #f1f5f9;
+            z-index: 2;
+        }
+
+        /* Badges de Cancelación Especiales */
+        .badge-cancel-active {
+            background-color: #ecfdf5 !important;
+            color: #10b981 !important;
+            border: 1px solid #a7f3d0;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+        .badge-cancel-locked {
+            background-color: #f1f5f9 !important;
+            color: #64748b !important;
+            border: 1px solid #e2e8f0;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        /* Botón de Cancelar Estilizado */
+        .btn-light-danger {
+            background-color: #fef2f2;
+            border: 1px solid #fee2e2;
+            color: #ef4444;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+        }
+        .btn-light-danger:hover:not(:disabled) {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border-color: #fca5a5;
+            transform: scale(1.01);
+        }
+        .btn-light-danger:active {
+            transform: scale(0.99);
+        }
+
+        /* Botón de Calificación Estilizado */
+        .btn-light-primary {
+            background-color: #f0f7ff;
+            border: 1px solid #e0f2fe;
+            color: #0284c7;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+        }
+        .btn-light-primary:hover {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border-color: #bae6fd;
+            transform: scale(1.01);
+        }
+
+        /* Estilo Recibo/Ticket para Paso 3 */
+        .receipt-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.015);
+            overflow: hidden;
+        }
+        .receipt-container::before, .receipt-container::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: #f5f8fa; /* Mismo color del fondo de la página */
+            border-radius: 50%;
+            bottom: 60px;
+            z-index: 5;
+            border: 1px solid #e2e8f0;
+        }
+        .receipt-container::before {
+            left: -9px;
+        }
+        .receipt-container::after {
+            right: -9px;
+        }
+        .receipt-line-dashed {
+            border-top: 1px dashed #cbd5e1;
+            margin: 18px 0;
+        }
+
+        /* Micro-animaciones en Wizards */
+        .service-card-wizard {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .service-card-wizard:hover {
+            transform: translateY(-2px);
+            border-color: #009ee3;
+            box-shadow: 0 8px 16px rgba(0, 158, 227, 0.06);
+        }
+        .service-card-wizard.selected {
+            border-color: #009ee3;
+            background-color: #f0f9ff;
+            box-shadow: 0 0 0 3px rgba(0, 158, 227, 0.08);
+        }
+        .btn-slot-picker {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .btn-slot-picker:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0, 158, 227, 0.08);
+        }
+        .btn-slot-picker.active {
+            transform: scale(1.05);
+        }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-custom py-3 mb-4">
         <div class="container d-flex flex-column flex-md-row align-items-center gap-3">
-            <a class="navbar-brand fw-bold fs-4 text-white mb-0 d-flex align-items-center gap-2" href="/pagina-inicio"><div class="logo-nav">TY</div>Turnos Ya</a>
+            <a class="navbar-brand fw-bold fs-4 text-white mb-0 d-flex align-items-center gap-2" href="/pagina-inicio">
+                <div class="logo-nav">TY</div>Turnos Ya
+            </a>
             <div class="search-group flex-grow-1 w-100">
-                <input type="text" id="businessSearch" class="form-control search-bar" placeholder="Buscar negocios o servicios...">
+                <input type="text" id="businessSearch" class="form-control search-bar"
+                    placeholder="Buscar negocios o servicios...">
                 <button class="btn btn-search" type="button" id="btnSearch" aria-label="Buscar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search text-white" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-search text-white" viewBox="0 0 16 16">
+                        <path
+                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
                     </svg>
                 </button>
             </div>
@@ -342,8 +675,8 @@ require_once __DIR__ . '/../src/bootstrap.php';
                         : "<div class=\"avatar\">{$initials}</div>";
 
                     $addressContent = $address 
-                        ? "<p class=\"mb-2 small text-muted text-truncate\" title=\"{$address}\"><span class=\"me-1\">📍</span>{$address}</p>"
-                        : "<p class=\"mb-2 small text-muted text-truncate text-secondary italic\">📍 Dirección no especificada</p>";
+                        ? "<p class=\"mb-2 small text-muted text-truncate\" title=\"{$address}\"><i class=\"bi bi-geo-alt me-1\"></i>{$address}</p>"
+                        : "<p class=\"mb-2 small text-muted text-truncate text-secondary italic\"><i class=\"bi bi-geo-alt me-1\"></i>Dirección no especificada</p>";
                     
                     $userId = $_SESSION['user_id'] ?? null;
                     $userRole = $_SESSION['user_role'] ?? null;
@@ -374,7 +707,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
                     $ratingAvg = $business->reviews_avg_rating ? number_format($business->reviews_avg_rating, 1) : null;
                     $ratingCount = $business->reviews_count ?? 0;
                     $ratingHtml = $ratingAvg 
-                        ? "<span class=\"badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2\" style=\"width: fit-content;\">⭐ {$ratingAvg} ({$ratingCount})</span>"
+                        ? "<span class=\"badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2\" style=\"width: fit-content;\"><i class=\"bi bi-star-fill text-warning me-1\"></i>{$ratingAvg} ({$ratingCount})</span>"
                         : "<span class=\"badge bg-light text-muted border border-light-subtle py-1 px-2 rounded-pill small mb-2\" style=\"width: fit-content;\">Sin calificaciones</span>";
 
                     echo "<div class=\"col-sm-6 col-md-4 col-lg-3 server-rendered\">";
@@ -396,56 +729,189 @@ require_once __DIR__ . '/../src/bootstrap.php';
             ?>
         </div>
 
-        <!-- Sección de reserva oculta inicialmente -->
-        <div id="reserveSection" class="mt-5" style="display: none;">
-            <div class="card custom-card border-0 p-4 mx-auto" style="max-width: 600px;">
-                <h4 class="card-title text-center fw-bold text-dark mb-4 border-bottom pb-2">Reservar Turno</h4>
-                <form id="solicitarTurno">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold text-muted">Negocio seleccionado</label>
-                        <input type="text" id="selectedBusinessName" class="form-control bg-light" readonly style="pointer-events: none;">
-                        <input type="hidden" id="selectedBusinessId" name="business_id">
+        <!-- Sección de reserva oculta inicialmente (Rediseño Wizard Premium) -->
+        <div id="reserveSection" class="mt-4" style="display: none;">
+            <div class="card custom-card border-0 shadow-lg p-0 overflow-hidden mx-auto" style="max-width: 950px; border-radius: 16px;">
+                <div class="row g-0">
+                    <!-- Columna Izquierda: Información de la Sucursal e Indicador de Progreso -->
+                    <div class="col-lg-4 text-white p-4 d-flex flex-column justify-content-between" style="background: linear-gradient(135deg, #009ee3, #0081bb); min-height: 350px;">
+                        <div>
+                            <!-- Botón Volver -->
+                            <button type="button" class="btn btn-sm btn-light border-0 text-primary fw-bold px-3 mb-4 rounded-pill shadow-sm d-inline-flex align-items-center gap-1" id="btnCancelBooking" style="background-color: #ffffff !important; color: #009ee3 !important;">
+                                <i class="bi bi-arrow-left"></i> Volver
+                            </button>
+                            <!-- Info de Sucursal -->
+                            <div class="d-flex align-items-center gap-3 mb-4">
+                                <div id="bookingBusinessLogoContainer" class="bg-white rounded-circle shadow-sm p-1 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px; flex-shrink: 0;">
+                                    <span class="fs-4 fw-extrabold text-primary" id="bookingBusinessInitials">TY</span>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <h5 class="fw-bold mb-1 text-truncate" id="bookingBusinessName">Cargando...</h5>
+                                    <span class="badge bg-white text-primary border-0 py-1 px-2 rounded-pill fw-bold d-inline-flex align-items-center gap-1" id="bookingBusinessRating" style="font-size:0.75rem;"><i class="bi bi-star-fill text-warning"></i> --</span>
+                                </div>
+                            </div>
+                            <p class="small opacity-90 mb-4 text-truncate-2" id="bookingBusinessAddress"><i class="bi bi-geo-alt me-1"></i> Dirección comercial</p>
+                        </div>
+                        
+                        <!-- Progreso del Wizard -->
+                        <div class="wizard-steps-indicators mt-auto">
+                            <div class="d-flex align-items-center gap-3 mb-3 step-indicator active" id="stepIndicator1">
+                                <div class="step-num">1</div>
+                                <div class="small fw-semibold">Seleccionar Servicio</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 mb-3 step-indicator" id="stepIndicator2">
+                                <div class="step-num">2</div>
+                                <div class="small fw-semibold">Elegir Fecha y Hora</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 step-indicator" id="stepIndicator3">
+                                <div class="step-num">3</div>
+                                <div class="small fw-semibold">Confirmación</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold text-dark">Selecciona un servicio</label>
-                        <select id="selectService" name="service_id" class="form-select" required></select>
+                    
+                    <!-- Columna Derecha: Contenido Activo del Wizard -->
+                    <div class="col-lg-8 p-4 bg-white d-flex flex-column justify-content-between">
+                        <form id="solicitarTurno" class="h-100 d-flex flex-column justify-content-between">
+                            <input type="hidden" id="selectedBusinessId" name="business_id">
+                            <input type="hidden" id="bookingTime" name="time" required>
+                            
+                            <!-- PASO 1: Catálogo de Servicios -->
+                            <div class="wizard-step-panel" id="panelStep1">
+                                <h4 class="fw-bold text-dark mb-1">Elige un Servicio</h4>
+                                <p class="text-muted small mb-4">Selecciona el tratamiento o servicio que deseas agendar.</p>
+                                
+                                <input type="hidden" id="selectService" name="service_id" required>
+                                
+                                <div id="servicesWizardList" class="row g-3 overflow-y-auto pr-1" style="max-height: 360px;">
+                                    <p class="text-muted text-center py-4 small">Obteniendo servicios del negocio...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- PASO 2: Fecha y Hora -->
+                            <div class="wizard-step-panel" id="panelStep2" style="display: none;">
+                                <h4 class="fw-bold text-dark mb-1">Fecha y Hora</h4>
+                                <p class="text-muted small mb-3">Elige el día y selecciona un horario de atención disponible.</p>
+                                
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-secondary small mb-1">Fecha del Turno</label>
+                                        <input type="date" id="bookingDate" name="date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 py-2 fw-semibold" id="btnBackToStep1" style="border-radius: 8px;">
+                                            Cambiar Servicio
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Contenedor de Slots Horarios agrupados -->
+                                <div id="timeSlotsContainer" class="border-top pt-3" style="display: none;">
+                                    <div id="slotsGroupMorning" class="mb-3" style="display: none;">
+                                        <h6 class="fw-bold text-secondary small mb-2">
+                                            Mañana (09:00 - 13:00)
+                                        </h6>
+                                        <div class="d-flex flex-wrap gap-2 slots-grid"></div>
+                                    </div>
+                                    <div id="slotsGroupAfternoon" style="display: none;">
+                                        <h6 class="fw-bold text-secondary small mb-2">
+                                            Tarde (13:00 - 18:00)
+                                        </h6>
+                                        <div class="d-flex flex-wrap gap-2 slots-grid"></div>
+                                    </div>
+                                    <div id="slotsEmptyMessage" class="text-center py-4 text-muted small" style="display: none;">
+                                        No hay horarios disponibles para esta fecha.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- PASO 3: Confirmación Final -->
+                            <div class="wizard-step-panel" id="panelStep3" style="display: none;">
+                                <h4 class="fw-bold text-dark mb-1">Confirmar Reserva</h4>
+                                <p class="text-muted small mb-4">Verifica los detalles de tu cita antes de confirmar.</p>
+                                
+                                <div class="receipt-container mb-4">
+                                    <div class="text-center mb-3">
+                                        <span class="d-inline-block mb-2 text-success">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                                            </svg>
+                                        </span>
+                                        <div class="text-muted small fw-semibold text-uppercase tracking-wider">Detalles de la Reserva</div>
+                                    </div>
+                                    <div class="receipt-line-dashed"></div>
+                                    <div class="mb-3">
+                                        <div class="text-muted small fw-semibold">Servicio Seleccionado</div>
+                                        <div class="fw-bold text-dark fs-5" id="summaryServiceName">-</div>
+                                        <div class="text-muted small" id="summaryServiceDesc">-</div>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <div class="text-muted small fw-semibold">Fecha y Hora</div>
+                                            <div class="fw-bold text-primary" id="summaryDateTime">-</div>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <div class="text-muted small fw-semibold">Costo Total</div>
+                                            <div class="fw-bold text-success fs-5" id="summaryPrice">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="receipt-line-dashed"></div>
+                                    <div class="text-center text-muted" style="font-size: 0.72rem; font-weight: 500;">
+                                        Gracias por reservar con Turnos Ya
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-secondary w-50 py-2 fw-semibold" id="btnBackToStep2" style="border-radius: 8px;">
+                                        Cambiar Fecha/Hora
+                                    </button>
+                                    <button type="submit" class="btn btn-primary w-50 py-2 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" style="border-radius: 8px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.442z"/>
+                                        </svg>
+                                        Confirmar Cita
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold text-dark">Fecha de reserva</label>
-                        <input type="date" id="bookingDate" name="date" class="form-control" required>
-                    </div>
-                    <input type="hidden" id="bookingTime" name="time" required>
-                    <div id="timeSlotsContainer" class="mb-3" style="display: none;"></div>
-                    <button type="submit" class="btn btn-primary w-100 mt-2 py-2 fw-bold shadow-sm">Confirmar Reserva</button>
-                </form>
+                </div>
             </div>
         </div>
+
 
         <!-- Sección de mis turnos oculta inicialmente -->
         <div id="myAppointmentsSection" class="mt-5" style="display: none;">
             <div class="card custom-card border-0 p-4 mx-auto" style="max-width: 800px;">
                 <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
                     <h4 class="card-title mb-0 text-primary fw-bold">Mis Turnos Agendados</h4>
-                    <button id="closeAppointmentsBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a Negocios</button>
+                    <button id="closeAppointmentsBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a
+                        Negocios</button>
                 </div>
-                
+
                 <!-- Pestañas de navegación -->
                 <ul class="nav nav-pills mb-4 justify-content-center gap-2" id="appointmentsTab" role="tablist">
                     <li class="nav-item text-center" role="presentation" style="flex: 1; max-width: 200px;">
-                        <button class="nav-link active w-100 fw-bold py-2 border border-primary-subtle" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming-appointments" type="button" role="tab" aria-controls="upcoming-appointments" aria-selected="true" style="border-radius: 8px;">
+                        <button class="nav-link active w-100 fw-bold py-2 border border-primary-subtle"
+                            id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming-appointments"
+                            type="button" role="tab" aria-controls="upcoming-appointments" aria-selected="true"
+                            style="border-radius: 8px;">
                             Próximos Turnos
                         </button>
                     </li>
                     <li class="nav-item text-center" role="presentation" style="flex: 1; max-width: 200px;">
-                        <button class="nav-link w-100 fw-bold py-2 border border-light-subtle" id="history-tab" data-bs-toggle="pill" data-bs-target="#history-appointments" type="button" role="tab" aria-controls="history-appointments" aria-selected="false" style="border-radius: 8px;">
+                        <button class="nav-link w-100 fw-bold py-2 border border-light-subtle" id="history-tab"
+                            data-bs-toggle="pill" data-bs-target="#history-appointments" type="button" role="tab"
+                            aria-controls="history-appointments" aria-selected="false" style="border-radius: 8px;">
                             Historial de Turnos
                         </button>
                     </li>
                 </ul>
-                
+
                 <div class="tab-content" id="appointmentsTabContent">
                     <!-- Pestaña Turnos Próximos -->
-                    <div class="tab-pane fade show active" id="upcoming-appointments" role="tabpanel" aria-labelledby="upcoming-tab">
+                    <div class="tab-pane fade show active" id="upcoming-appointments" role="tabpanel"
+                        aria-labelledby="upcoming-tab">
                         <div id="appointmentsList" class="row g-3">
                             <!-- Aquí se cargarán dinámicamente los turnos próximos -->
                         </div>
@@ -465,44 +931,61 @@ require_once __DIR__ . '/../src/bootstrap.php';
             <div class="card custom-card border-0 p-4 mx-auto" style="max-width: 700px;">
                 <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
                     <h4 class="card-title mb-0 text-primary fw-bold">Mi Perfil</h4>
-                    <button id="closeProfileBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a Negocios</button>
+                    <button id="closeProfileBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a
+                        Negocios</button>
                 </div>
-                
+
                 <div class="row g-4">
                     <!-- Columna de Avatar y Resumen -->
                     <div class="col-md-4 text-center border-end border-light">
-                        <div class="user-avatar-circle mx-auto mb-3" id="profileLargeAvatar" style="width: 80px; height: 80px; font-size: 2.2rem; background-color: #e6f5fc; color: #009ee3; border: 2px solid #009ee3; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">U</div>
+                        <div class="user-avatar-circle mx-auto mb-3" id="profileLargeAvatar"
+                            style="width: 80px; height: 80px; font-size: 2.2rem; background-color: #e6f5fc; color: #009ee3; border: 2px solid #009ee3; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                            U</div>
                         <h5 class="fw-bold mb-1 text-dark" id="profileName">Nombre</h5>
-                        <span class="badge bg-light text-primary border border-primary-subtle py-1 px-3 rounded-pill fw-bold mb-3 d-inline-block" id="profileRole" style="font-size: 0.8rem;">Rol</span>
-                        
+                        <span
+                            class="badge bg-light text-primary border border-primary-subtle py-1 px-3 rounded-pill fw-bold mb-3 d-inline-block"
+                            id="profileRole" style="font-size: 0.8rem;">Rol</span>
+
                         <div class="d-grid gap-2 mt-2">
-                            <button class="btn btn-primary btn-sm fw-bold py-2" id="btnProfileGoToAppointments" style="border-radius: 8px;">Mis Turnos</button>
-                            <button class="btn btn-outline-danger btn-sm fw-semibold py-2" id="btnProfileLogout" style="border-radius: 8px;">Cerrar Sesión</button>
+                            <button class="btn btn-primary btn-sm fw-bold py-2" id="btnProfileGoToAppointments"
+                                style="border-radius: 8px;">Mis Turnos</button>
+                            <button class="btn btn-outline-danger btn-sm fw-semibold py-2" id="btnProfileLogout"
+                                style="border-radius: 8px;">Cerrar Sesión</button>
                         </div>
                     </div>
-                    
+
                     <!-- Columna de Configuración / Formularios -->
                     <div class="col-md-8">
-                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">⚙️ Configuración de Usuario</h6>
-                        
+                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-gear-fill text-muted" viewBox="0 0 16 16">
+                                <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.86z"/>
+                            </svg>
+                            Configuración de Usuario
+                        </h6>
+
                         <div class="mb-3">
                             <label class="form-label fw-semibold text-muted small mb-1">Nombre Completo</label>
-                            <input type="text" class="form-control bg-light" id="configUserName" readonly style="pointer-events: none; border-radius: 8px;">
+                            <input type="text" class="form-control bg-light" id="configUserName" readonly
+                                style="pointer-events: none; border-radius: 8px;">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold text-muted small mb-1">Correo Electrónico</label>
-                            <input type="email" class="form-control bg-light" id="configUserEmail" readonly style="pointer-events: none; border-radius: 8px;">
+                            <input type="email" class="form-control bg-light" id="configUserEmail" readonly
+                                style="pointer-events: none; border-radius: 8px;">
                         </div>
-                        
+
                         <!-- Sección Futuro: Configuraciones placeholder -->
                         <div class="p-3 bg-light rounded-3 border border-light-subtle mt-4">
                             <h6 class="fw-bold text-secondary small mb-2">Preferencias (Próximamente)</h6>
                             <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="prefNotifications" checked disabled>
-                                <label class="form-check-label text-muted small" for="prefNotifications">Recibir notificaciones por correo</label>
+                                <input class="form-check-input" type="checkbox" role="switch" id="prefNotifications"
+                                    checked disabled>
+                                <label class="form-check-label text-muted small" for="prefNotifications">Recibir
+                                    notificaciones por correo</label>
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="prefDarkMode" disabled>
+                                <input class="form-check-input" type="checkbox" role="switch" id="prefDarkMode"
+                                    disabled>
                                 <label class="form-check-label text-muted small" for="prefDarkMode">Modo Oscuro</label>
                             </div>
                         </div>
@@ -513,11 +996,14 @@ require_once __DIR__ . '/../src/bootstrap.php';
     </div>
 
     <!-- Modal de Detalles de Negocio -->
-    <div class="modal fade" id="businessDetailsModal" tabindex="-1" aria-labelledby="businessDetailsModalLabel" aria-hidden="true">
+    <div class="modal fade" id="businessDetailsModal" tabindex="-1" aria-labelledby="businessDetailsModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0" style="border-radius: 16px; box-shadow: 0 16px 36px rgba(0, 158, 227, 0.08);">
+            <div class="modal-content border-0"
+                style="border-radius: 16px; box-shadow: 0 16px 36px rgba(0, 158, 227, 0.08);">
                 <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
-                    <h5 class="modal-title fw-bold text-dark fs-4" id="businessDetailsModalLabel">Detalles del Negocio</h5>
+                    <h5 class="modal-title fw-bold text-dark fs-4" id="businessDetailsModalLabel">Detalles del Negocio
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body px-4 pb-4 pt-2">
@@ -530,7 +1016,8 @@ require_once __DIR__ . '/../src/bootstrap.php';
     </div>
 
     <!-- Modal para Calificar Servicio -->
-    <div class="modal fade" id="rateServiceModal" tabindex="-1" aria-labelledby="rateServiceModalLabel" aria-hidden="true">
+    <div class="modal fade" id="rateServiceModal" tabindex="-1" aria-labelledby="rateServiceModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
                 <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
@@ -540,11 +1027,12 @@ require_once __DIR__ . '/../src/bootstrap.php';
                 <div class="modal-body px-4 pb-4 pt-2">
                     <form id="rateServiceForm">
                         <input type="hidden" id="rateAppointmentId" name="appointment_id">
-                        
+
                         <div class="text-center my-3">
                             <p class="text-muted small mb-2">¿Cómo calificarías la atención de este servicio?</p>
                             <!-- Estrellas interactivas -->
-                            <div class="star-rating d-flex justify-content-center gap-2 fs-2 my-2" id="modalStarsContainer">
+                            <div class="star-rating d-flex justify-content-center gap-2 fs-2 my-2"
+                                id="modalStarsContainer">
                                 <span class="star-item cursor-pointer" data-rating="1">★</span>
                                 <span class="star-item cursor-pointer" data-rating="2">★</span>
                                 <span class="star-item cursor-pointer" data-rating="3">★</span>
@@ -553,15 +1041,20 @@ require_once __DIR__ . '/../src/bootstrap.php';
                             </div>
                             <input type="hidden" id="selectedRating" name="rating" required>
                         </div>
-                        
+
                         <div class="mb-3">
-                            <label for="rateComment" class="form-label fw-semibold text-dark">Tu reseña (opcional)</label>
-                            <textarea class="form-control" id="rateComment" name="comment" rows="3" placeholder="Escribe un comentario sobre tu experiencia con el servicio..." style="border-radius: 8px; resize: none;"></textarea>
+                            <label for="rateComment" class="form-label fw-semibold text-dark">Tu reseña
+                                (opcional)</label>
+                            <textarea class="form-control" id="rateComment" name="comment" rows="3"
+                                placeholder="Escribe un comentario sobre tu experiencia con el servicio..."
+                                style="border-radius: 8px; resize: none;"></textarea>
                         </div>
-                        
+
                         <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="border-radius:8px;">Cancelar</button>
-                            <button type="submit" class="btn btn-primary px-4" style="border-radius:8px;">Enviar Calificación</button>
+                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal"
+                                style="border-radius:8px;">Cancelar</button>
+                            <button type="submit" class="btn btn-primary px-4" style="border-radius:8px;">Enviar
+                                Calificación</button>
                         </div>
                     </form>
                 </div>
@@ -571,7 +1064,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        (function(){
+        (function () {
             const candidates = [
                 'js/client.js',
                 '/js/client.js',
@@ -599,12 +1092,12 @@ require_once __DIR__ . '/../src/bootstrap.php';
     </script>
     <script>
         // Ajusta dinámicamente los enlaces absolutos para soportar despliegues en subdirectorios de XAMPP
-        (function() {
-            const basePath = (function() {
+        (function () {
+            const basePath = (function () {
                 try {
                     const pathname = window.location.pathname;
                     const parts = pathname.split('/');
-                    const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+                    const knownPages = ['pagina-inicio', 'client', 'crear-negocio', 'agregar-horario', 'login', 'dashboard', 'registro', 'api'];
                     while (parts.length > 0) {
                         const last = parts[parts.length - 1];
                         if (last === '' || knownPages.includes(last)) {
@@ -636,4 +1129,5 @@ require_once __DIR__ . '/../src/bootstrap.php';
         })();
     </script>
 </body>
+
 </html>

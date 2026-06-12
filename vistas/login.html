@@ -137,6 +137,19 @@
         })();
         const apiUrl = pageBasePath + '/api';
 
+        // Redirección automática si el usuario ya está autenticado
+        (function() {
+            const loggedUserId = localStorage.getItem('userId');
+            const loggedUserRole = localStorage.getItem('userRole') || 'client';
+            if (loggedUserId) {
+                if (loggedUserRole === 'owner' || loggedUserRole === 'administrator') {
+                    window.location.href = pageBasePath + '/dashboard';
+                } else {
+                    window.location.href = pageBasePath + '/pagina-inicio';
+                }
+            }
+        })();
+
         // Corrige los destinos de los enlaces absolutos dinámicamente
         if (pageBasePath) {
             const correctLinks = () => {
@@ -189,7 +202,12 @@
                     localStorage.setItem('userName', result.name || '');
                     showLoginMessage('Sesión iniciada correctamente. Redirigiendo...', 'success');
                     setTimeout(() => {
-                        window.location.href = pageBasePath + '/pagina-inicio';
+                        const targetRole = result.role || 'client';
+                        if (targetRole === 'owner' || targetRole === 'administrator') {
+                            window.location.href = pageBasePath + '/dashboard';
+                        } else {
+                            window.location.href = pageBasePath + '/pagina-inicio';
+                        }
                     }, 900);
                 } else {
                     showLoginMessage(result.message || 'Correo electrónico o contraseña incorrectos.');

@@ -1,2 +1,2 @@
 <?php
-require __DIR__ . '/../routes/router.php';
+return require __DIR__ . '/../routes/router.php';

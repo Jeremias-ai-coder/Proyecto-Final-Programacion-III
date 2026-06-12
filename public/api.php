@@ -436,6 +436,27 @@ switch ($route) {
             ]);
             jsonResponse($service, 201);
         }
+        if ($method === 'DELETE') {
+            $id = $_GET['id'] ?? null;
+            if (!$id) {
+                jsonResponse(['message' => 'Falta el id del servicio'], 400);
+            }
+            $service = Service::find($id);
+            if (!$service) {
+                jsonResponse(['message' => 'Servicio no encontrado'], 404);
+            }
+
+            // Validar permisos
+            $userId = $_SESSION['user_id'] ?? null;
+            $userRole = $_SESSION['user_role'] ?? null;
+            $business = Business::find($service->business_id);
+            if (!$business || ($business->owner_id !== $userId && $userRole !== 'administrator')) {
+                jsonResponse(['message' => 'No tienes permisos para eliminar este servicio.'], 403);
+            }
+
+            $service->delete();
+            jsonResponse(['message' => 'Servicio eliminado correctamente']);
+        }
         break;
 
     case 'schedule':
@@ -473,6 +494,27 @@ switch ($route) {
                 'end_time' => $end,
             ]);
             jsonResponse($schedule, 201);
+        }
+        if ($method === 'DELETE') {
+            $id = $_GET['id'] ?? null;
+            if (!$id) {
+                jsonResponse(['message' => 'Falta el id del horario'], 400);
+            }
+            $schedule = WorkSchedule::find($id);
+            if (!$schedule) {
+                jsonResponse(['message' => 'Horario no encontrado'], 404);
+            }
+
+            // Validar permisos
+            $userId = $_SESSION['user_id'] ?? null;
+            $userRole = $_SESSION['user_role'] ?? null;
+            $business = Business::find($schedule->business_id);
+            if (!$business || ($business->owner_id !== $userId && $userRole !== 'administrator')) {
+                jsonResponse(['message' => 'No tienes permisos para eliminar este horario.'], 403);
+            }
+
+            $schedule->delete();
+            jsonResponse(['message' => 'Horario de atención eliminado correctamente']);
         }
         break;
 
@@ -682,6 +724,38 @@ switch ($route) {
             jsonResponse($appointment, 201);
         }
 
+        if ($method === 'PUT') {
+            $id = sanitizeInt($input['id'] ?? null);
+            $status = sanitizeString($input['status'] ?? '');
+
+            if (!$id || !$status) {
+                jsonResponse(['message' => 'Falta id de turno o status'], 400);
+            }
+
+            $appointment = Appointment::find($id);
+            if (!$appointment) {
+                jsonResponse(['message' => 'Turno no encontrado'], 404);
+            }
+
+            $sessionUserId = $_SESSION['user_id'] ?? null;
+            $sessionUserRole = $_SESSION['user_role'] ?? null;
+            $business = Business::find($appointment->business_id);
+            $isOwner = $business && $business->owner_id === $sessionUserId;
+            $isClient = $appointment->user_id === $sessionUserId;
+
+            if (!$isOwner && !$isClient && $sessionUserRole !== 'administrator') {
+                jsonResponse(['message' => 'No autorizado para modificar este turno.'], 403);
+            }
+
+            if (!in_array($status, ['pending', 'completed', 'cancelled'])) {
+                jsonResponse(['message' => 'Estado de turno inválido'], 400);
+            }
+
+            $appointment->status = $status;
+            $appointment->save();
+            jsonResponse($appointment);
+        }
+
         if ($method === 'DELETE') {
             $id = $_GET['id'] ?? null;
             if (!$id) {
@@ -692,9 +766,13 @@ switch ($route) {
                 jsonResponse(['message' => 'Turno no encontrado'], 404);
             }
 
-            // Validar que el turno pertenezca al usuario de la sesión actual
+            // Validar que el turno pertenezca al cliente o que sea el dueño del negocio o un administrador
             $sessionUserId = $_SESSION['user_id'] ?? null;
-            if ($appointment->user_id !== $sessionUserId) {
+            $sessionUserRole = $_SESSION['user_role'] ?? null;
+            $business = Business::find($appointment->business_id);
+            $isOwner = $business && $business->owner_id === $sessionUserId;
+
+            if ($appointment->user_id !== $sessionUserId && !$isOwner && $sessionUserRole !== 'administrator') {
                 jsonResponse(['message' => 'No autorizado para cancelar este turno.'], 403);
             }
 
@@ -705,13 +783,16 @@ switch ($route) {
                 jsonResponse(['message' => 'No se puede cancelar un turno ya completado.'], 400);
             }
 
-            // Validar restricción de 24 horas de anticipación
-            $appointmentTime = strtotime($appointment->date . ' ' . $appointment->time);
-            $now = time();
-            $diffHours = ($appointmentTime - $now) / 3600;
+            // Validar restricción de 24 horas de anticipación (solo aplica a clientes comunes, no al dueño ni administradores)
+            if (!$isOwner && $sessionUserRole !== 'administrator') {
+                $dateStr = $appointment->date instanceof \DateTimeInterface ? $appointment->date->format('Y-m-d') : (string)$appointment->date;
+                $appointmentTime = strtotime($dateStr . ' ' . $appointment->time);
+                $now = time();
+                $diffHours = ($appointmentTime - $now) / 3600;
 
-            if ($diffHours < 24) {
-                jsonResponse(['message' => 'Solo puedes cancelar turnos con al menos 24 horas de anticipación.'], 400);
+                if ($diffHours < 24) {
+                    jsonResponse(['message' => 'Solo puedes cancelar turnos con al menos 24 horas de anticipación.'], 400);
+                }
             }
 
             $appointment->status = 'cancelled';

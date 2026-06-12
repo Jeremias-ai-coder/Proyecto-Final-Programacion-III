@@ -14,7 +14,7 @@ class Appointment extends Model
     public $timestamps = true;
 
     protected $casts = [
-        'date' => 'date',
+        'date' => 'date:Y-m-d',
     ];
 
     public function service()
