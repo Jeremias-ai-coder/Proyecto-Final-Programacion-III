@@ -19,18 +19,51 @@ require_once __DIR__ . '/../src/bootstrap.php';
             background-color: #009ee3; /* Celeste Mercado Libre */
             box-shadow: 0 4px 12px rgba(0, 158, 227, 0.08);
         }
-        .search-bar {
+        .search-group {
+            position: relative;
+            background: #ffffff;
             border-radius: 24px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 2px 6px rgba(0,0,0,.03);
-            padding: 12px 20px;
-            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
             transition: all 0.2s ease;
+            padding: 2px;
         }
-        .search-bar:focus {
+        .search-group:focus-within {
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
             border-color: #ffffff;
-            outline: none;
+        }
+        .search-bar {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            border-radius: 24px 0 0 24px !important;
+            background: transparent !important;
+            color: #1e293b;
+        }
+        .btn-search {
+            background-color: #009ee3;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            margin-right: 2px;
+            flex-shrink: 0;
+        }
+        .btn-search:hover {
+            background-color: #0081bb;
+            transform: scale(1.05);
+        }
+        .btn-search:active {
+            transform: scale(0.95);
         }
         
         /* Tarjetas de negocios al estilo de Mercado Libre */
@@ -180,16 +213,88 @@ require_once __DIR__ . '/../src/bootstrap.php';
             padding: 6px 12px;
             border-radius: 20px;
         }
+        
+        /* Estilos para Calificación por Estrellas */
+        .star-rating .star-item {
+            font-size: 2.5rem;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: transform 0.1s ease, color 0.1s ease;
+        }
+        .star-rating .star-item:hover {
+            transform: scale(1.15);
+        }
+        .star-rating .star-item.selected,
+        .star-rating .star-item.hover {
+            color: #ffb800; /* Dorado premium */
+        }
+        .cursor-pointer {
+            cursor: pointer;
+        }
+        .review-star {
+            color: #ffb800;
+        }
+        .review-star-empty {
+            color: #cbd5e1;
+        }
+        .review-card {
+            background-color: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+
+        /* Estilo Avatar Navbar Estilo Mercado Libre */
+        .user-avatar-circle-nav {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            color: #009ee3;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: transform 0.15s ease;
+        }
+        .user-avatar-circle-nav:hover {
+            transform: scale(1.05);
+        }
+        .dropdown-menu .dropdown-item:active {
+            background-color: #009ee3 !important;
+        }
+        .logo-nav {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #ffffff, #e6f5fc);
+            color: #009ee3;
+            font-weight: 800;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-custom py-3 mb-4">
         <div class="container d-flex flex-column flex-md-row align-items-center gap-3">
-            <a class="navbar-brand fw-bold fs-4 text-white mb-0" href="/pagina-inicio">Turnos Ya</a>
-            <input type="text" id="businessSearch" class="form-control search-bar flex-grow-1 w-100" placeholder="Buscar negocios o servicios...">
+            <a class="navbar-brand fw-bold fs-4 text-white mb-0 d-flex align-items-center gap-2" href="/pagina-inicio"><div class="logo-nav">TY</div>Turnos Ya</a>
+            <div class="search-group flex-grow-1 w-100">
+                <input type="text" id="businessSearch" class="form-control search-bar" placeholder="Buscar negocios o servicios...">
+                <button class="btn btn-search" type="button" id="btnSearch" aria-label="Buscar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search text-white" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                </button>
+            </div>
             <div class="d-flex align-items-center gap-3" id="navbarActions">
-                <input type="text" id="userDisplay" class="form-control-plaintext text-white fw-semibold p-0 text-md-end" readonly value="Cargando..." style="width: auto; pointer-events: none;">
-                <div id="dynamicNavButtons" class="d-flex gap-2"></div>
+                <!-- Inyectado dinámicamente por client.js -->
             </div>
         </div>
     </nav>
@@ -204,7 +309,10 @@ require_once __DIR__ . '/../src/bootstrap.php';
             use App\Models\Business;
 
             try {
-                $businesses = Business::with(['owner','services','workSchedules'])->get();
+                $businesses = Business::with(['owner','services','workSchedules'])
+                    ->withAvg('reviews', 'rating')
+                    ->withCount('reviews')
+                    ->get();
             } catch (Throwable $e) {
                 $businesses = collect();
             }
@@ -263,12 +371,19 @@ require_once __DIR__ . '/../src/bootstrap.php';
                         </div>";
                     }
                     
+                    $ratingAvg = $business->reviews_avg_rating ? number_format($business->reviews_avg_rating, 1) : null;
+                    $ratingCount = $business->reviews_count ?? 0;
+                    $ratingHtml = $ratingAvg 
+                        ? "<span class=\"badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2\" style=\"width: fit-content;\">⭐ {$ratingAvg} ({$ratingCount})</span>"
+                        : "<span class=\"badge bg-light text-muted border border-light-subtle py-1 px-2 rounded-pill small mb-2\" style=\"width: fit-content;\">Sin calificaciones</span>";
+
                     echo "<div class=\"col-sm-6 col-md-4 col-lg-3 server-rendered\">";
                     echo "<div class=\"ml-card h-100 d-flex flex-column shadow-sm\">";
                     echo $dropdownHtml;
                     echo "<div class=\"ml-image\"><div style=\"width:72px; height:72px; display:flex; align-items:center; justify-content:center;\">{$logoContent}</div></div>";
                     echo "<div class=\"card-body d-flex flex-column\">";
                     echo "<h5 class=\"card-title text-truncate\">{$name}</h5>";
+                    echo "<div class=\"d-flex align-items-center mb-2\">{$ratingHtml}</div>";
                     echo "<p class=\"card-text text-truncate mb-2\">{$description}</p>";
                     echo "{$addressContent}";
                     echo "<p class=\"mb-3 small text-muted\">Dueño: {$ownerName}</p>";
@@ -313,8 +428,85 @@ require_once __DIR__ . '/../src/bootstrap.php';
                     <h4 class="card-title mb-0 text-primary fw-bold">Mis Turnos Agendados</h4>
                     <button id="closeAppointmentsBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a Negocios</button>
                 </div>
-                <div id="appointmentsList" class="row g-3">
-                    <!-- Aquí se cargarán dinámicamente los turnos -->
+                
+                <!-- Pestañas de navegación -->
+                <ul class="nav nav-pills mb-4 justify-content-center gap-2" id="appointmentsTab" role="tablist">
+                    <li class="nav-item text-center" role="presentation" style="flex: 1; max-width: 200px;">
+                        <button class="nav-link active w-100 fw-bold py-2 border border-primary-subtle" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming-appointments" type="button" role="tab" aria-controls="upcoming-appointments" aria-selected="true" style="border-radius: 8px;">
+                            Próximos Turnos
+                        </button>
+                    </li>
+                    <li class="nav-item text-center" role="presentation" style="flex: 1; max-width: 200px;">
+                        <button class="nav-link w-100 fw-bold py-2 border border-light-subtle" id="history-tab" data-bs-toggle="pill" data-bs-target="#history-appointments" type="button" role="tab" aria-controls="history-appointments" aria-selected="false" style="border-radius: 8px;">
+                            Historial de Turnos
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="appointmentsTabContent">
+                    <!-- Pestaña Turnos Próximos -->
+                    <div class="tab-pane fade show active" id="upcoming-appointments" role="tabpanel" aria-labelledby="upcoming-tab">
+                        <div id="appointmentsList" class="row g-3">
+                            <!-- Aquí se cargarán dinámicamente los turnos próximos -->
+                        </div>
+                    </div>
+                    <!-- Pestaña Historial -->
+                    <div class="tab-pane fade" id="history-appointments" role="tabpanel" aria-labelledby="history-tab">
+                        <div id="appointmentsHistoryList" class="row g-3">
+                            <!-- Aquí se cargarán dinámicamente los turnos del historial -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Mi Perfil / Configuraciones -->
+        <div id="userProfileSection" class="mt-5" style="display: none;">
+            <div class="card custom-card border-0 p-4 mx-auto" style="max-width: 700px;">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                    <h4 class="card-title mb-0 text-primary fw-bold">Mi Perfil</h4>
+                    <button id="closeProfileBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Volver a Negocios</button>
+                </div>
+                
+                <div class="row g-4">
+                    <!-- Columna de Avatar y Resumen -->
+                    <div class="col-md-4 text-center border-end border-light">
+                        <div class="user-avatar-circle mx-auto mb-3" id="profileLargeAvatar" style="width: 80px; height: 80px; font-size: 2.2rem; background-color: #e6f5fc; color: #009ee3; border: 2px solid #009ee3; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">U</div>
+                        <h5 class="fw-bold mb-1 text-dark" id="profileName">Nombre</h5>
+                        <span class="badge bg-light text-primary border border-primary-subtle py-1 px-3 rounded-pill fw-bold mb-3 d-inline-block" id="profileRole" style="font-size: 0.8rem;">Rol</span>
+                        
+                        <div class="d-grid gap-2 mt-2">
+                            <button class="btn btn-primary btn-sm fw-bold py-2" id="btnProfileGoToAppointments" style="border-radius: 8px;">Mis Turnos</button>
+                            <button class="btn btn-outline-danger btn-sm fw-semibold py-2" id="btnProfileLogout" style="border-radius: 8px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Columna de Configuración / Formularios -->
+                    <div class="col-md-8">
+                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">⚙️ Configuración de Usuario</h6>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-muted small mb-1">Nombre Completo</label>
+                            <input type="text" class="form-control bg-light" id="configUserName" readonly style="pointer-events: none; border-radius: 8px;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-muted small mb-1">Correo Electrónico</label>
+                            <input type="email" class="form-control bg-light" id="configUserEmail" readonly style="pointer-events: none; border-radius: 8px;">
+                        </div>
+                        
+                        <!-- Sección Futuro: Configuraciones placeholder -->
+                        <div class="p-3 bg-light rounded-3 border border-light-subtle mt-4">
+                            <h6 class="fw-bold text-secondary small mb-2">Preferencias (Próximamente)</h6>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="prefNotifications" checked disabled>
+                                <label class="form-check-label text-muted small" for="prefNotifications">Recibir notificaciones por correo</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="prefDarkMode" disabled>
+                                <label class="form-check-label text-muted small" for="prefDarkMode">Modo Oscuro</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -332,6 +524,46 @@ require_once __DIR__ . '/../src/bootstrap.php';
                     <div id="businessDetailsContent">
                         <!-- Inyección dinámica desde JS -->
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Calificar Servicio -->
+    <div class="modal fade" id="rateServiceModal" tabindex="-1" aria-labelledby="rateServiceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bold text-dark fs-4" id="rateServiceModalLabel">Calificar Servicio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body px-4 pb-4 pt-2">
+                    <form id="rateServiceForm">
+                        <input type="hidden" id="rateAppointmentId" name="appointment_id">
+                        
+                        <div class="text-center my-3">
+                            <p class="text-muted small mb-2">¿Cómo calificarías la atención de este servicio?</p>
+                            <!-- Estrellas interactivas -->
+                            <div class="star-rating d-flex justify-content-center gap-2 fs-2 my-2" id="modalStarsContainer">
+                                <span class="star-item cursor-pointer" data-rating="1">★</span>
+                                <span class="star-item cursor-pointer" data-rating="2">★</span>
+                                <span class="star-item cursor-pointer" data-rating="3">★</span>
+                                <span class="star-item cursor-pointer" data-rating="4">★</span>
+                                <span class="star-item cursor-pointer" data-rating="5">★</span>
+                            </div>
+                            <input type="hidden" id="selectedRating" name="rating" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="rateComment" class="form-label fw-semibold text-dark">Tu reseña (opcional)</label>
+                            <textarea class="form-control" id="rateComment" name="comment" rows="3" placeholder="Escribe un comentario sobre tu experiencia con el servicio..." style="border-radius: 8px; resize: none;"></textarea>
+                        </div>
+                        
+                        <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="border-radius:8px;">Cancelar</button>
+                            <button type="submit" class="btn btn-primary px-4" style="border-radius:8px;">Enviar Calificación</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

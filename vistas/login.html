@@ -101,6 +101,10 @@
                         <label class="form-label">Contraseña</label>
                         <input type="password" name="password" class="form-control" placeholder="••••••••" required>
                     </div>
+                    <div class="form-check mb-3 d-flex align-items-center gap-2">
+                        <input class="form-check-input mt-0" type="checkbox" id="rememberMe" name="remember_me">
+                        <label class="form-check-label text-muted small" for="rememberMe" style="cursor: pointer;">Recordarme por 30 días</label>
+                    </div>
                     <button class="btn btn-custom w-100 mb-3 shadow-sm" type="submit">Ingresar</button>
                 </form>
                 
@@ -164,6 +168,7 @@
             const formData = new FormData(e.target);
             const email = formData.get('email');
             const password = formData.get('password');
+            const remember_me = document.getElementById('rememberMe').checked;
 
             if (!email || !password) {
                 showLoginMessage('Debes completar el correo y la contraseña.');
@@ -174,7 +179,7 @@
                 const res = await fetch(`${apiUrl}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password, remember_me })
                 });
                 const result = await res.json();
 

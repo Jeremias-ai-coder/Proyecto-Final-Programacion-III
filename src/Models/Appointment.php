@@ -31,4 +31,9 @@ class Appointment extends Model
     {
         return $this->belongsTo(Business::class);
     }
+
+    public function review()
+    {
+        return $this->hasOne(Review::class);
+    }
 }

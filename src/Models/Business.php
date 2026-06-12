@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\WorkSchedule;
 use App\Models\User;
+use App\Models\Review;
 
 class Business extends Model
 {
@@ -32,5 +33,10 @@ class Business extends Model
     public function appointments()
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasManyThrough(Review::class, Appointment::class);
     }
 }

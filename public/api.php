@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Models\Review;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
@@ -49,7 +50,9 @@ header('X-RateLimit-Remaining: ' . $limitCheck['remaining']);
 switch ($route) {
     case 'businesses':
         if ($method === 'GET') {
-            $query = Business::with(['owner', 'services', 'workSchedules']);
+            $query = Business::with(['owner', 'services', 'workSchedules'])
+                ->withAvg('reviews', 'rating')
+                ->withCount('reviews');
             if (isset($_GET['owner_id'])) {
                 $ownerId = sanitizeInt($_GET['owner_id']);
                 $query->where('owner_id', $ownerId);
@@ -226,18 +229,35 @@ switch ($route) {
 
     case 'users':
             if ($method === 'GET') {
+                $sessionUserId = $_SESSION['user_id'] ?? null;
+                $sessionUserRole = $_SESSION['user_role'] ?? null;
+
+                if (!$sessionUserId) {
+                    jsonResponse(['message' => 'No autorizado'], 401);
+                }
+
                 // Buscar usuario por email o id, o listar todos
                 if (isset($_GET['email'])) {
                     $email = sanitizeString($_GET['email']);
                     $user = User::where('email', $email)->first();
                     if (!$user) jsonResponse(['message' => 'Usuario no encontrado'], 404);
+                    if ($user->id !== $sessionUserId && $sessionUserRole !== 'administrator') {
+                        jsonResponse(['message' => 'No tienes permisos para ver esta información'], 403);
+                    }
                     jsonResponse($user);
                 }
                 if (isset($_GET['id'])) {
                     $id = sanitizeInt($_GET['id']);
+                    if ($id !== $sessionUserId && $sessionUserRole !== 'administrator') {
+                        jsonResponse(['message' => 'No tienes permisos para ver esta información'], 403);
+                    }
                     $user = User::find($id);
                     if (!$user) jsonResponse(['message' => 'Usuario no encontrado'], 404);
                     jsonResponse($user);
+                }
+                // Listar todos los usuarios requiere ser administrador
+                if ($sessionUserRole !== 'administrator') {
+                    jsonResponse(['message' => 'No tienes permisos para ver esta lista'], 403);
                 }
                 $users = User::all();
                 jsonResponse($users);
@@ -300,6 +320,43 @@ switch ($route) {
             $_SESSION['user_id'] = $user->id;
             $_SESSION['user_role'] = $user->role;
             $_SESSION['user_name'] = $user->name;
+            $_SESSION['created_time'] = time();
+            $_SESSION['last_activity'] = time();
+
+            // Recordarme (Remember Me) por 30 días si es seleccionado
+            $rememberMe = isset($input['remember_me']) && $input['remember_me'] === true;
+            if ($rememberMe) {
+                try {
+                    $selector = bin2hex(random_bytes(8)); // 16 caracteres hexadecimales
+                    $validator = bin2hex(random_bytes(16)); // 32 caracteres hexadecimales
+                    $expiry = time() + (30 * 24 * 3600); // 30 días de vida
+
+                    \App\Models\UserRememberToken::create([
+                        'user_id' => $user->id,
+                        'selector' => $selector,
+                        'hashed_validator' => hash('sha256', $validator),
+                        'expires_at' => date('Y-m-d H:i:s', $expiry),
+                    ]);
+
+                    $cookieParams = session_get_cookie_params();
+                    setcookie(
+                        'remember_me',
+                        $selector . ':' . $validator,
+                        $expiry,
+                        $cookieParams['path'],
+                        $cookieParams['domain'],
+                        $cookieParams['secure'],
+                        $cookieParams['httponly']
+                    );
+                } catch (\Exception $e) {
+                    // Si ocurre un error guardando el token, igual procedemos con el login de sesión común
+                }
+            }
+
+            // Garbage collection preventiva para eliminar tokens viejos y evitar llenar la base de datos
+            try {
+                \App\Models\UserRememberToken::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
+            } catch (\Exception $e) {}
 
             jsonResponse([
                 'id' => $user->id,
@@ -312,6 +369,23 @@ switch ($route) {
 
     case 'logout':
         if ($method === 'POST') {
+            // Eliminar token de remember_me si existe en base de datos y limpiar la cookie
+            if (isset($_COOKIE['remember_me'])) {
+                $cookieValue = $_COOKIE['remember_me'];
+                $parts = explode(':', $cookieValue, 2);
+                if (count($parts) === 2) {
+                    $selector = $parts[0];
+                    try {
+                        \App\Models\UserRememberToken::where('selector', $selector)->delete();
+                    } catch (\Exception $e) {}
+                }
+                $params = session_get_cookie_params();
+                setcookie('remember_me', '', time() - 42000,
+                    $params["path"], $params["domain"],
+                    $params["secure"], $params["httponly"]
+                );
+            }
+
             $_SESSION = [];
             if (ini_get("session.use_cookies")) {
                 $params = session_get_cookie_params();
@@ -425,13 +499,94 @@ switch ($route) {
         }
         break;
 
+    case 'reviews':
+        if ($method === 'GET') {
+            $businessId = isset($_GET['business_id']) ? sanitizeInt($_GET['business_id']) : null;
+            if (!$businessId) {
+                jsonResponse(['message' => 'Falta el id del negocio'], 400);
+            }
+            // Obtener todas las reviews del negocio
+            $reviews = Review::whereHas('appointment', function ($q) use ($businessId) {
+                $q->where('business_id', $businessId);
+            })
+            ->join('appointments', 'reviews.appointment_id', '=', 'appointments.id')
+            ->join('users', 'appointments.user_id', '=', 'users.id')
+            ->select('reviews.*', 'users.name as user_name', 'appointments.date as appointment_date')
+            ->orderBy('reviews.created_at', 'desc')
+            ->get();
+            jsonResponse($reviews);
+        }
+        if ($method === 'POST') {
+            $userId = $_SESSION['user_id'] ?? null;
+            if (!$userId) {
+                jsonResponse(['message' => 'Inicie sesión para calificar el servicio.'], 401);
+            }
+            $appointmentId = sanitizeInt($input['appointment_id'] ?? null);
+            $rating = sanitizeInt($input['rating'] ?? null);
+            $comment = sanitizeString($input['comment'] ?? null);
+            if (!$appointmentId) {
+                jsonResponse(['message' => 'Falta el id del turno'], 400);
+            }
+            if ($rating === null || $rating < 1 || $rating > 5) {
+                jsonResponse(['message' => 'La calificación debe estar entre 1 y 5 estrellas'], 400);
+            }
+            $appointment = Appointment::with('service')->find($appointmentId);
+            if (!$appointment) {
+                jsonResponse(['message' => 'Turno no encontrado'], 404);
+            }
+            if ($appointment->user_id !== $userId) {
+                jsonResponse(['message' => 'No autorizado para calificar este turno.'], 403);
+            }
+            $duration = $appointment->service ? $appointment->service->duration_minutes : 30;
+            $dateStr = $appointment->date instanceof \DateTimeInterface ? $appointment->date->format('Y-m-d') : (string)$appointment->date;
+            $apptTime = strtotime($dateStr . ' ' . $appointment->time);
+            $endTime = strtotime("+{$duration} minutes", $apptTime);
+            if ($appointment->status !== 'completed' && $endTime >= time()) {
+                jsonResponse(['message' => 'Solo puedes calificar un turno que ya haya concluido.'], 400);
+            }
+            if ($appointment->status === 'cancelled') {
+                jsonResponse(['message' => 'No se puede calificar un turno cancelado.'], 400);
+            }
+            $existingReview = Review::where('appointment_id', $appointmentId)->first();
+            if ($existingReview) {
+                jsonResponse(['message' => 'Este turno ya ha sido calificado.'], 400);
+            }
+            if ($appointment->status === 'pending') {
+                $appointment->status = 'completed';
+                $appointment->save();
+            }
+            $review = Review::create([
+                'appointment_id' => $appointmentId,
+                'rating' => $rating,
+                'comment' => $comment !== '' ? $comment : null,
+            ]);
+            jsonResponse($review, 201);
+        }
+        break;
+
     case 'appointments':
         if ($method === 'GET') {
             $userId = $_SESSION['user_id'] ?? null;
             if (!$userId) {
                 jsonResponse(['message' => 'Inicie sesión para ver sus turnos.'], 401);
             }
-            $appointments = Appointment::with(['business', 'service'])
+            // Autocompletar turnos pasados del usuario
+            $pendingAppts = Appointment::where('user_id', $userId)
+                ->where('status', 'pending')
+                ->with('service')
+                ->get();
+            $now = time();
+            foreach ($pendingAppts as $appt) {
+                $duration = $appt->service ? $appt->service->duration_minutes : 30;
+                $dateStr = $appt->date instanceof \DateTimeInterface ? $appt->date->format('Y-m-d') : (string)$appt->date;
+                $apptTime = strtotime($dateStr . ' ' . $appt->time);
+                $endTime = strtotime("+{$duration} minutes", $apptTime);
+                if ($endTime < $now) {
+                    $appt->status = 'completed';
+                    $appt->save();
+                }
+            }
+            $appointments = Appointment::with(['business', 'service', 'review'])
                 ->where('user_id', $userId)
                 ->orderBy('date', 'asc')
                 ->orderBy('time', 'asc')

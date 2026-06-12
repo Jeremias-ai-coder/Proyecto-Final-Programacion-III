@@ -115,6 +115,12 @@ function renderBusinessCards(items) {
                 </div>
             `;
         }
+
+        const ratingAvg = business.reviews_avg_rating ? parseFloat(business.reviews_avg_rating).toFixed(1) : null;
+        const ratingCount = business.reviews_count || 0;
+        const ratingHtml = ratingAvg 
+            ? `<span class="badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2" style="width: fit-content;">⭐ ${ratingAvg} (${ratingCount})</span>`
+            : `<span class="badge bg-light text-muted border border-light-subtle py-1 px-2 rounded-pill small mb-2" style="width: fit-content;">Sin calificaciones</span>`;
         
         card.innerHTML = `
             <div class="ml-card h-100 d-flex flex-column shadow-sm">
@@ -126,6 +132,7 @@ function renderBusinessCards(items) {
                 </div>
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title text-truncate">${business.name}</h5>
+                    <div class="d-flex align-items-center mb-2">${ratingHtml}</div>
                     <p class="card-text text-truncate mb-2">${business.description || 'Sin descripción'}</p>
                     ${addressContent}
                     <p class="mb-3 small text-muted">Dueño: ${business.owner ? business.owner.name : 'N/D'}</p>
@@ -152,7 +159,7 @@ function filterBusinesses(items, query) {
 // 5. INICIALIZADOR PRINCIPAL SEGURO DE CARGA (init)
 async function init() {
     console.info('client.js init() ejecutándose...');
-    const userDisplay = document.getElementById('userDisplay');
+    const navbarActions = document.getElementById('navbarActions');
     const businessSearch = document.getElementById('businessSearch');
     const businessGrid = document.getElementById('businessGrid');
     const reserveSection = document.getElementById('reserveSection');
@@ -169,7 +176,15 @@ async function init() {
     const bookingDate = document.getElementById('bookingDate');
     const bookingTime = document.getElementById('bookingTime');
     const timeSlotsContainer = document.getElementById('timeSlotsContainer');
-    const dynamicNavButtons = document.getElementById('dynamicNavButtons');
+    
+    // Elementos del perfil de usuario
+    const userProfileSection = document.getElementById('userProfileSection');
+    const configUserName = document.getElementById('configUserName');
+    const configUserEmail = document.getElementById('configUserEmail');
+    const profileName = document.getElementById('profileName');
+    const profileRole = document.getElementById('profileRole');
+    const profileLargeAvatar = document.getElementById('profileLargeAvatar');
+    const closeProfileBtn = document.getElementById('closeProfileBtn');
 
     const myAppointmentsSection = document.getElementById('myAppointmentsSection');
     const closeAppointmentsBtn = document.getElementById('closeAppointmentsBtn');
@@ -194,77 +209,166 @@ async function init() {
 
     renderBusinessCards(businesses);
 
-    // B. Mostrar nombre del usuario autenticado en la barra
-    if (userId) {
-        const res = await fetch(`${apiUrl}/users?id=${userId}`);
-        if (res.ok) {
-            const u = await res.json();
-            userDisplay.value = `${u.name} (${u.email})`;
-        } else {
-            userDisplay.value = 'Usuario desconocido';
+    // Función para cerrar sesión
+    async function handleLogout() {
+        try {
+            await fetch(`${apiUrl}/logout`, { method: 'POST' });
+        } catch (e) {
+            console.error('Error closing session on server', e);
         }
-    } else {
-        userDisplay.value = 'Inicia sesión para continuar';
+        localStorage.clear();
+        alert('Sesión cerrada con éxito.');
+        window.location.reload();
     }
 
-    // C. INYECCIÓN DINÁMICA DE MENÚ SUPERIOR DE ACCIONES POR ROL
-    if (dynamicNavButtons) {
-        dynamicNavButtons.innerHTML = '';
-        if (!userId) {
-            const loginBtn = document.createElement('a');
-            loginBtn.className = 'btn btn-light btn-sm fw-semibold text-primary px-3';
-            loginBtn.href = pageBasePath + '/login';
-            loginBtn.innerText = 'Iniciar Sesión';
-            
-            dynamicNavButtons.appendChild(loginBtn);
-        } else {
-            // Usuario con sesión iniciada
-            if (userRole === 'owner') {
-                const manageBizBtn = document.createElement('a');
-                manageBizBtn.className = 'btn btn-light btn-sm fw-bold text-primary px-3 shadow-sm';
-                manageBizBtn.href = pageBasePath + '/dashboard';
-                manageBizBtn.innerText = 'Gestionar mis negocios';
-                dynamicNavButtons.appendChild(manageBizBtn);
-            } else if (userRole === 'administrator') {
-                const adminBtn = document.createElement('a');
-                adminBtn.className = 'btn btn-light btn-sm fw-bold text-danger px-3 shadow-sm';
-                adminBtn.href = pageBasePath + '/dashboard';
-                adminBtn.innerText = 'Panel de Control';
-                dynamicNavButtons.appendChild(adminBtn);
-            } else {
-                const registerBizBtn = document.createElement('a');
-                registerBizBtn.className = 'btn btn-outline-light btn-sm fw-semibold px-3';
-                registerBizBtn.href = pageBasePath + '/crear-negocio';
-                registerBizBtn.innerText = 'Registrar mi negocio';
-                dynamicNavButtons.appendChild(registerBizBtn);
+    // Función coordinada para cambiar de sección activa
+    function showSection(sectionId) {
+        businessGrid.style.display = 'none';
+        reserveSection.style.display = 'none';
+        myAppointmentsSection.style.display = 'none';
+        if (userProfileSection) userProfileSection.style.display = 'none';
+        
+        if (sectionId === 'grid') {
+            businessGrid.style.display = 'flex';
+            businessGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (sectionId === 'appointments') {
+            myAppointmentsSection.style.display = 'block';
+            myAppointmentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            refreshMyAppointmentsList();
+        } else if (sectionId === 'profile') {
+            if (userProfileSection) {
+                userProfileSection.style.display = 'block';
+                userProfileSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-            
-            // Botón "Mis Turnos" de autogestión para cancelaciones
-            const myApptsBtn = document.createElement('button');
-            myApptsBtn.type = 'button';
-            myApptsBtn.className = 'btn btn-outline-light btn-sm fw-semibold px-3 ms-2';
-            myApptsBtn.innerText = 'Mis Turnos';
-            myApptsBtn.addEventListener('click', () => {
-                showMyAppointments();
-            });
-            dynamicNavButtons.appendChild(myApptsBtn);
-            
-            // Botón de Cierre de Sesión
-            const logoutBtn = document.createElement('button');
-            logoutBtn.type = 'button';
-            logoutBtn.className = 'btn btn-outline-danger btn-sm fw-semibold text-white border-white px-3 ms-2';
-            logoutBtn.innerText = 'Cerrar Sesión';
-            logoutBtn.addEventListener('click', async () => {
-                try {
-                    await fetch(`${apiUrl}/logout`, { method: 'POST' });
-                } catch (e) {
-                    console.error('Error closing session on server', e);
+        }
+    }
+
+    // B. Mostrar nombre y menú del usuario autenticado (Estilo Mercado Libre)
+    if (navbarActions) {
+        navbarActions.innerHTML = '';
+        if (!userId) {
+            navbarActions.innerHTML = `
+                <div class="d-flex gap-2">
+                    <a class="btn btn-light btn-sm fw-semibold text-primary px-3" href="${pageBasePath}/login">Iniciar Sesión</a>
+                    <a class="btn btn-outline-light btn-sm fw-semibold px-3" href="${pageBasePath}/registro">Crear Cuenta</a>
+                </div>
+            `;
+        } else {
+            try {
+                const res = await fetch(`${apiUrl}/users?id=${userId}`);
+                if (res.ok) {
+                    const u = await res.json();
+                    const initials = (u.name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+                    
+                    // Precargar panel de perfil
+                    if (configUserName) configUserName.value = u.name;
+                    if (configUserEmail) configUserEmail.value = u.email;
+                    if (profileName) profileName.innerText = u.name;
+                    if (profileLargeAvatar) profileLargeAvatar.innerText = initials || 'U';
+                    
+                    let roleLabel = 'Cliente';
+                    if (u.role === 'owner') roleLabel = 'Dueño de Negocio';
+                    else if (u.role === 'administrator') roleLabel = 'Administrador';
+                    if (profileRole) profileRole.innerText = roleLabel;
+
+                    // Opciones de rol
+                    let roleOptions = '';
+                    if (u.role === 'owner') {
+                        roleOptions = `
+                            <li>
+                                <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" href="${pageBasePath}/dashboard">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-briefcase-fill text-muted" viewBox="0 0 16 16">
+                                        <path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v1.384l7.614 2.03a1.5 1.5 0 0 0 .772 0L16 5.884V4.5A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1h-3zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5z"/>
+                                        <path d="M0 12.5A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5V6.85L8.129 8.947a.5.5 0 0 1-.258 0L0 6.85v5.65z"/>
+                                    </svg>
+                                    Gestionar mis negocios
+                                </a>
+                            </li>
+                        `;
+                    } else if (u.role === 'administrator') {
+                        roleOptions = `
+                            <li>
+                                <a class="dropdown-item py-2 fw-semibold text-danger d-flex align-items-center gap-2" href="${pageBasePath}/dashboard">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-lock-fill" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99 1.679 2.196 3.7 3.28 4.016 3.43a.498.498 0 0 0 .376 0c.315-.15 2.337-1.034 4.016-3.43 1.678-2.195 3.061-5.513 2.466-9.99a1.54 1.54 0 0 0-1.044-1.263 62.439 62.439 0 0 0-2.887-.87C9.843.266 8.69 0 8 0zm0 5a1.5 1.5 0 0 1 .5 2.915V9a.5.5 0 0 1-1 0V7.915A1.5 1.5 0 0 1 8 5z"/>
+                                    </svg>
+                                    Panel de Control
+                                </a>
+                            </li>
+                        `;
+                    } else {
+                        roleOptions = `
+                            <li>
+                                <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" href="${pageBasePath}/crear-negocio">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill text-muted" viewBox="0 0 16 16">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                    </svg>
+                                    Registrar mi negocio
+                                </a>
+                            </li>
+                        `;
+                    }
+
+                    navbarActions.innerHTML = `
+                        <div class="dropdown">
+                            <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center gap-2 p-0 border-0 shadow-none" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="user-avatar-circle-nav">${initials || 'U'}</div>
+                                <span class="fw-semibold small d-none d-sm-inline">${u.name}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-2" aria-labelledby="userMenuButton" style="border-radius: 12px; min-width: 210px;">
+                                <li>
+                                    <div class="px-3 py-2 text-truncate" style="max-width: 210px;">
+                                        <div class="fw-bold text-dark small" style="line-height: 1.2;">${u.name}</div>
+                                        <span class="text-muted" style="font-size: 0.75rem;">${u.email}</span>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <button class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" id="btnNavbarGoToProfile">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-fill text-muted" viewBox="0 0 16 16">
+                                            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                                        </svg>
+                                        Mi Perfil
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" id="btnNavbarGoToAppointments">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-check-fill text-muted" viewBox="0 0 16 16">
+                                            <path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4V.5zM16 14a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V5h16v9zm-5.146-5.146a.5.5 0 0 0-.708-.708L8 10.293 6.854 9.146a.5.5 0 1 0-.708.708L7.293 11l-1.147 1.146a.5.5 0 0 0 .708.708L8 11.707l1.146 1.147a.5.5 0 0 0 .708-.708L8.707 11l1.147-1.146z"/>
+                                        </svg>
+                                        Mis Turnos
+                                    </button>
+                                </li>
+                                ${roleOptions}
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <button class="dropdown-item py-2 fw-semibold text-danger d-flex align-items-center gap-2" id="btnNavbarLogout">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                                            <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                        </svg>
+                                        Cerrar Sesión
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    `;
+
+                    // Asignar listeners del dropdown
+                    document.getElementById('btnNavbarGoToProfile').addEventListener('click', () => showSection('profile'));
+                    document.getElementById('btnNavbarGoToAppointments').addEventListener('click', () => showSection('appointments'));
+                    document.getElementById('btnNavbarLogout').addEventListener('click', handleLogout);
+                } else {
+                    if (res.status === 401 || res.status === 403) {
+                        localStorage.clear();
+                        window.location.reload();
+                        return;
+                    }
+                    navbarActions.innerHTML = `<span class="text-white fw-semibold small">Usuario desconocido</span>`;
                 }
-                localStorage.clear();
-                alert('Sesión cerrada con éxito.');
-                window.location.reload();
-            });
-            dynamicNavButtons.appendChild(logoutBtn);
+            } catch (error) {
+                console.error('Error rendering user navbar profile dropdown:', error);
+            }
         }
     }
 
@@ -277,6 +381,15 @@ async function init() {
         const filtered = filterBusinesses(businesses, businessSearch.value);
         renderBusinessCards(filtered);
     });
+
+    const btnSearch = document.getElementById('btnSearch');
+    if (btnSearch) {
+        btnSearch.addEventListener('click', () => {
+            const filtered = filterBusinesses(businesses, businessSearch.value);
+            renderBusinessCards(filtered);
+            businessSearch.focus();
+        });
+    }
 
     // Escuchar click en el botón de reservar de una tarjeta de negocio
     businessGrid.addEventListener('click', async (event) => {
@@ -569,98 +682,174 @@ async function init() {
     async function refreshMyAppointmentsList() {
         if (!userId) return;
         
-        appointmentsList.innerHTML = '<div class="text-center py-4 text-muted w-100"><div class="spinner-border spinner-border-sm me-2 text-primary" role="status"></div>Cargando tus turnos...</div>';
+        const appointmentsList = document.getElementById('appointmentsList');
+        const appointmentsHistoryList = document.getElementById('appointmentsHistoryList');
+        
+        if (appointmentsList) {
+            appointmentsList.innerHTML = '<div class="text-center py-4 text-muted w-100"><div class="spinner-border spinner-border-sm me-2 text-primary" role="status"></div>Cargando tus turnos...</div>';
+        }
+        if (appointmentsHistoryList) {
+            appointmentsHistoryList.innerHTML = '<div class="text-center py-4 text-muted w-100"><div class="spinner-border spinner-border-sm me-2 text-primary" role="status"></div>Cargando historial...</div>';
+        }
 
         try {
             const res = await fetch(`${apiUrl}/appointments?user_id=${userId}`);
             if (!res.ok) {
-                appointmentsList.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error al cargar tus turnos.</div></div>';
+                if (appointmentsList) appointmentsList.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error al cargar tus turnos.</div></div>';
+                if (appointmentsHistoryList) appointmentsHistoryList.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error al cargar tu historial.</div></div>';
                 return;
             }
 
             const appts = await res.json();
-            appointmentsList.innerHTML = '';
+            if (appointmentsList) appointmentsList.innerHTML = '';
+            if (appointmentsHistoryList) appointmentsHistoryList.innerHTML = '';
 
-            if (appts.length === 0) {
-                appointmentsList.innerHTML = '<div class="col-12"><div class="alert alert-info text-center py-4">Aún no tienes ningún turno reservado.</div></div>';
-                return;
-            }
+            const upcomingAppts = appts.filter(appt => appt.status === 'pending');
+            const historyAppts = appts.filter(appt => appt.status === 'completed' || appt.status === 'cancelled');
 
-            appts.forEach(appt => {
-                const card = document.createElement('div');
-                card.className = 'col-sm-6 col-md-4';
-                
-                const bizName = appt.business ? appt.business.name : 'Negocio';
-                const serviceName = appt.service ? appt.service.name : 'Servicio';
-                const price = appt.service ? appt.service.price : '0.00';
-                
-                // Formatear Fecha
-                const rawDate = appt.date ? appt.date.split('T')[0] : '';
-                const dateParts = rawDate.split('-');
-                const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : rawDate;
-                const formattedTime = appt.time ? appt.time.substring(0, 5) : '';
+            // 7.1 Renderizar Turnos Próximos
+            if (upcomingAppts.length === 0) {
+                if (appointmentsList) {
+                    appointmentsList.innerHTML = '<div class="col-12"><div class="alert alert-info text-center py-4">No tienes turnos próximos agendados.</div></div>';
+                }
+            } else {
+                upcomingAppts.forEach(appt => {
+                    const card = document.createElement('div');
+                    card.className = 'col-sm-6 col-md-4';
+                    
+                    const bizName = appt.business ? appt.business.name : 'Negocio';
+                    const serviceName = appt.service ? appt.service.name : 'Servicio';
+                    const price = appt.service ? appt.service.price : '0.00';
+                    
+                    const rawDate = appt.date ? appt.date.split('T')[0] : '';
+                    const dateParts = rawDate.split('-');
+                    const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : rawDate;
+                    const formattedTime = appt.time ? appt.time.substring(0, 5) : '';
 
-                // Badge de Estado
-                let badgeClass = 'bg-secondary';
-                let statusLabel = 'Pendiente';
-                if (appt.status === 'completed') { badgeClass = 'bg-success'; statusLabel = 'Completado'; }
-                else if (appt.status === 'cancelled') { badgeClass = 'bg-danger'; statusLabel = 'Cancelado'; }
+                    let badgeClass = 'bg-primary';
+                    let statusLabel = 'Pendiente';
 
-                // REGLA DE NEGOCIO: Determinar si es cancelable (falta más de 24 horas para el turno)
-                let showCancelButton = false;
-                if (appt.status === 'pending') {
+                    // Cancelable rule
+                    let showCancelButton = false;
                     const apptTime = new Date(`${rawDate}T${appt.time.substring(0,5)}`).getTime();
                     const now = Date.now();
                     const diffHours = (apptTime - now) / (1000 * 60 * 60);
-                    // Solo habilitamos botón en UI si faltan 24h o más
                     if (diffHours >= 24) {
                         showCancelButton = true;
                     }
-                }
 
-                card.innerHTML = `
-                    <div class="card shadow-sm h-100 border-start border-4 ${appt.status === 'pending' ? 'border-primary' : (appt.status === 'completed' ? 'border-success' : 'border-danger')}">
-                        <div class="card-body p-3 d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="fw-bold text-truncate mb-0 text-dark" style="max-width: 70%;">${bizName}</h6>
-                                <span class="badge ${badgeClass}">${statusLabel}</span>
-                            </div>
-                            <p class="mb-1 small text-muted"><strong>Servicio:</strong> ${serviceName} ($${price})</p>
-                            <p class="mb-2 small text-muted"><strong>Fecha:</strong> ${formattedDate} — <strong>Hora:</strong> ${formattedTime} hs</p>
-                            ${showCancelButton ? `
-                                <div class="mt-auto pt-2 border-top">
-                                    <button class="btn btn-outline-danger btn-sm w-100 btn-cancel-appt" data-appt-id="${appt.id}">Cancelar Turno</button>
+                    card.innerHTML = `
+                        <div class="card shadow-sm h-100 border-start border-4 border-primary">
+                            <div class="card-body p-3 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold text-truncate mb-0 text-dark" style="max-width: 70%;">${bizName}</h6>
+                                    <span class="badge ${badgeClass}">${statusLabel}</span>
                                 </div>
-                            ` : ''}
+                                <p class="mb-1 small text-muted"><strong>Servicio:</strong> ${serviceName} ($${price})</p>
+                                <p class="mb-2 small text-muted"><strong>Fecha:</strong> ${formattedDate} — <strong>Hora:</strong> ${formattedTime} hs</p>
+                                ${showCancelButton ? `
+                                    <div class="mt-auto pt-2 border-top">
+                                        <button class="btn btn-outline-danger btn-sm w-100 btn-cancel-appt" data-appt-id="${appt.id}">Cancelar Turno</button>
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
-                    </div>
-                `;
-                
-                appointmentsList.appendChild(card);
-            });
+                    `;
+                    if (appointmentsList) appointmentsList.appendChild(card);
+                });
+            }
+
+            // 7.2 Renderizar Historial de Turnos
+            if (historyAppts.length === 0) {
+                if (appointmentsHistoryList) {
+                    appointmentsHistoryList.innerHTML = '<div class="col-12"><div class="alert alert-info text-center py-4">No tienes turnos finalizados en tu historial.</div></div>';
+                }
+            } else {
+                historyAppts.forEach(appt => {
+                    const card = document.createElement('div');
+                    card.className = 'col-sm-6 col-md-4';
+                    
+                    const bizName = appt.business ? appt.business.name : 'Negocio';
+                    const serviceName = appt.service ? appt.service.name : 'Servicio';
+                    const price = appt.service ? appt.service.price : '0.00';
+                    
+                    const rawDate = appt.date ? appt.date.split('T')[0] : '';
+                    const dateParts = rawDate.split('-');
+                    const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : rawDate;
+                    const formattedTime = appt.time ? appt.time.substring(0, 5) : '';
+
+                    let badgeClass = appt.status === 'completed' ? 'bg-success' : 'bg-danger';
+                    let statusLabel = appt.status === 'completed' ? 'Completado' : 'Cancelado';
+
+                    let actionHtml = '';
+                    if (appt.status === 'completed') {
+                        if (appt.review) {
+                            // Ya calificado
+                            const stars = '★'.repeat(appt.review.rating) + '☆'.repeat(5 - appt.review.rating);
+                            actionHtml = `
+                                <div class="mt-auto pt-2 border-top">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="small text-muted fw-bold">Tu calificación:</span>
+                                        <span class="review-star fw-bold fs-5">${stars}</span>
+                                    </div>
+                                    ${appt.review.comment ? `<p class="mb-0 small text-muted italic p-2 rounded" style="background:#f1f5f9; border-left: 3px solid #ffb800; font-size:0.8rem;">"${appt.review.comment}"</p>` : ''}
+                                </div>
+                            `;
+                        } else {
+                            // Sin calificar
+                            actionHtml = `
+                                <div class="mt-auto pt-2 border-top">
+                                    <button class="btn btn-outline-primary btn-sm w-100 btn-open-rate-modal" data-appt-id="${appt.id}">Calificar Servicio</button>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    card.innerHTML = `
+                        <div class="card shadow-sm h-100 border-start border-4 ${appt.status === 'completed' ? 'border-success' : 'border-danger'}">
+                            <div class="card-body p-3 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold text-truncate mb-0 text-dark" style="max-width: 70%;">${bizName}</h6>
+                                    <span class="badge ${badgeClass}">${statusLabel}</span>
+                                </div>
+                                <p class="mb-1 small text-muted"><strong>Servicio:</strong> ${serviceName} ($${price})</p>
+                                <p class="mb-2 small text-muted"><strong>Fecha:</strong> ${formattedDate} — <strong>Hora:</strong> ${formattedTime} hs</p>
+                                ${actionHtml}
+                            </div>
+                        </div>
+                    `;
+                    if (appointmentsHistoryList) appointmentsHistoryList.appendChild(card);
+                });
+            }
 
         } catch (error) {
             console.error('Error cargando turnos del cliente:', error);
-            appointmentsList.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error de conexión al cargar turnos.</div></div>';
+            if (appointmentsList) appointmentsList.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error de conexión al cargar turnos.</div></div>';
         }
     }
 
     // Toggle de visualización para ver historial de turnos
     function showMyAppointments() {
-        businessGrid.style.display = 'none';
-        reserveSection.style.display = 'none';
-        myAppointmentsSection.style.display = 'block';
-        myAppointmentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        refreshMyAppointmentsList();
+        showSection('appointments');
     }
 
     if (closeAppointmentsBtn) {
-        closeAppointmentsBtn.addEventListener('click', () => {
-            myAppointmentsSection.style.display = 'none';
-            businessGrid.style.display = 'flex';
-            businessGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
+        closeAppointmentsBtn.addEventListener('click', () => showSection('grid'));
+    }
+
+    // Listeners para el panel de perfil
+    if (closeProfileBtn) {
+        closeProfileBtn.addEventListener('click', () => showSection('grid'));
+    }
+
+    const btnProfileGoToAppointments = document.getElementById('btnProfileGoToAppointments');
+    if (btnProfileGoToAppointments) {
+        btnProfileGoToAppointments.addEventListener('click', () => showSection('appointments'));
+    }
+
+    const btnProfileLogout = document.getElementById('btnProfileLogout');
+    if (btnProfileLogout) {
+        btnProfileLogout.addEventListener('click', handleLogout);
     }
 
     // 8. CONTROLADOR DE CANCELACIONES (API DELETE)
@@ -702,12 +891,121 @@ async function init() {
         });
     }
 
+    // 8.3. CONTROLADOR PARA ABRIR EL MODAL DE CALIFICACIÓN
+    if (appointmentsHistoryList) {
+        appointmentsHistoryList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-open-rate-modal');
+            if (!btn) return;
+            const apptId = btn.dataset.apptId;
+            
+            // Configurar modal
+            document.getElementById('rateAppointmentId').value = apptId;
+            document.getElementById('selectedRating').value = '';
+            document.getElementById('rateComment').value = '';
+            
+            // Limpiar estrellas en el modal
+            document.querySelectorAll('#modalStarsContainer .star-item').forEach(s => {
+                s.classList.remove('selected', 'hover');
+            });
+            
+            // Mostrar modal
+            const rateModal = new bootstrap.Modal(document.getElementById('rateServiceModal'));
+            rateModal.show();
+        });
+    }
+
+    // 8.4. LÓGICA INTERACTIVA DE ESTRELLAS EN EL MODAL
+    const modalStarsContainer = document.getElementById('modalStarsContainer');
+    const selectedRatingInput = document.getElementById('selectedRating');
+    if (modalStarsContainer) {
+        const stars = modalStarsContainer.querySelectorAll('.star-item');
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = parseInt(star.dataset.rating, 10);
+                selectedRatingInput.value = rating;
+                stars.forEach((s, idx) => {
+                    if (idx < rating) {
+                        s.classList.add('selected');
+                    } else {
+                        s.classList.remove('selected');
+                    }
+                });
+            });
+            star.addEventListener('mouseover', () => {
+                const rating = parseInt(star.dataset.rating, 10);
+                stars.forEach((s, idx) => {
+                    if (idx < rating) {
+                        s.classList.add('hover');
+                    } else {
+                        s.classList.remove('hover');
+                    }
+                });
+            });
+            star.addEventListener('mouseout', () => {
+                stars.forEach(s => s.classList.remove('hover'));
+            });
+        });
+    }
+
+    // Enviar el formulario de calificación
+    const rateServiceForm = document.getElementById('rateServiceForm');
+    if (rateServiceForm) {
+        rateServiceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const apptId = document.getElementById('rateAppointmentId').value;
+            const rating = selectedRatingInput.value;
+            const comment = document.getElementById('rateComment').value;
+            
+            if (!rating) {
+                alert('Por favor selecciona una calificación por estrellas.');
+                return;
+            }
+            
+            const submitBtn = rateServiceForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            
+            try {
+                const res = await fetch(`${apiUrl}/reviews`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ appointment_id: apptId, rating, comment })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('¡Gracias por tu calificación!');
+                    
+                    // Cerrar modal
+                    const rateModalEl = document.getElementById('rateServiceModal');
+                    const bsModal = bootstrap.Modal.getInstance(rateModalEl);
+                    if (bsModal) bsModal.hide();
+                    
+                    // Resetear formulario
+                    rateServiceForm.reset();
+                    document.querySelectorAll('#modalStarsContainer .star-item').forEach(s => s.classList.remove('selected'));
+                    selectedRatingInput.value = '';
+                    
+                    // Refrescar lista de turnos e historial
+                    await refreshMyAppointmentsList();
+                    // Refrescar negocios locales
+                    await refreshBusinesses();
+                } else {
+                    alert('Error al enviar la calificación: ' + (data.message || 'Error desconocido'));
+                }
+            } catch (err) {
+                console.error('Error al calificar servicio:', err);
+                alert('Error de conexión. Inténtalo de nuevo.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
     // 8.5. CONTROLADOR DE DETALLES DEL NEGOCIO (MODAL)
     const businessDetailsModal = document.getElementById('businessDetailsModal');
     const businessDetailsContent = document.getElementById('businessDetailsContent');
 
     if (businessGrid) {
-        businessGrid.addEventListener('click', (e) => {
+        businessGrid.addEventListener('click', async (e) => {
             const btn = e.target.closest('.btn-view-business');
             if (!btn) return;
 
@@ -744,6 +1042,48 @@ async function init() {
                 schedulesHtml = "<p class='text-muted small italic text-center py-2'>Este negocio no tiene horarios de atención configurados aún.</p>";
             }
 
+            // Consultar reseñas reales del negocio a la API
+            let reviewsHtml = '';
+            let bizRatingSummary = '';
+            try {
+                const reviewsRes = await fetch(`${apiUrl}/reviews?business_id=${business.id}`);
+                if (reviewsRes.ok) {
+                    const reviews = await reviewsRes.json();
+                    if (reviews && reviews.length > 0) {
+                        const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+                        const avg = (sum / reviews.length).toFixed(1);
+                        bizRatingSummary = `⭐ <span class="fw-bold text-dark">${avg}</span> <span class="text-muted">/ 5 (${reviews.length} valoraciones)</span>`;
+                        
+                        reviewsHtml = reviews.map(r => {
+                            const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+                            const rawDate = r.appointment_date ? r.appointment_date.split('T')[0] : '';
+                            const dateParts = rawDate.split('-');
+                            const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : rawDate;
+                            return `
+                                <div class="review-card mb-2 text-start">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-dark small">${r.user_name}</span>
+                                        <span class="text-muted" style="font-size: 0.75rem;">${formattedDate}</span>
+                                    </div>
+                                    <div class="review-star small mb-1">${stars}</div>
+                                    ${r.comment ? `<p class="mb-0 small text-secondary italic" style="line-height: 1.3;">"${r.comment}"</p>` : ''}
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        bizRatingSummary = `<span class="text-muted">Sin calificaciones aún</span>`;
+                        reviewsHtml = `<p class="text-muted small italic text-center py-4 my-auto">Este negocio no tiene reseñas de clientes aún.</p>`;
+                    }
+                } else {
+                    bizRatingSummary = `<span class="text-danger small">Error de carga</span>`;
+                    reviewsHtml = `<p class="text-danger small text-center py-3">No se pudieron cargar las reseñas.</p>`;
+                }
+            } catch (err) {
+                console.error("Error al cargar reseñas:", err);
+                bizRatingSummary = `<span class="text-danger small">Error de conexión</span>`;
+                reviewsHtml = `<p class="text-danger small text-center py-3">Error de conexión al cargar reseñas.</p>`;
+            }
+
             if (businessDetailsContent) {
                 businessDetailsContent.innerHTML = `
                     <div class="text-center mb-4">
@@ -751,6 +1091,9 @@ async function init() {
                             ${logoHtml}
                         </div>
                         <h3 class="fw-bold text-dark mb-1">${business.name}</h3>
+                        <div class="d-flex justify-content-center align-items-center gap-1 mb-2">
+                            ${bizRatingSummary}
+                        </div>
                         <p class="text-muted mb-3">${business.description || 'Sin descripción disponible.'}</p>
                         <div class="d-flex justify-content-center">
                             ${addressHtml}
@@ -769,12 +1112,8 @@ async function init() {
                         <div class="col-md-6">
                             <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle d-flex flex-column">
                                 <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">⭐ Reseñas de Clientes</h6>
-                                <div class="my-auto text-center py-3">
-                                    <div class="text-muted fs-4 mb-2" style="letter-spacing: 2px; opacity: 0.35;">
-                                        ☆☆☆☆☆
-                                    </div>
-                                    <span class="badge bg-white text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold">Muy Pronto</span>
-                                    <p class="text-muted small mt-3 mb-0 px-2">Estamos diseñando un sistema de valoraciones e historial de experiencias para este local.</p>
+                                <div class="flex-grow-1 px-1" style="max-height: 250px; overflow-y: auto;">
+                                    ${reviewsHtml}
                                 </div>
                             </div>
                         </div>

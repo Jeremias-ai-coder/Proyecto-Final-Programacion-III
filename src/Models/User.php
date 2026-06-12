@@ -19,4 +19,10 @@ class User extends Model
     {
         return $this->hasMany(Appointment::class);
     }
+
+    public function rememberTokens()
+    {
+        return $this->hasMany(UserRememberToken::class);
+    }
 }
+
