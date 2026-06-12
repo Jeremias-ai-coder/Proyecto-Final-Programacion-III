@@ -489,59 +489,118 @@
 
                 <!-- Pestaña 4: Configuración -->
                 <div class="tab-pane fade" id="tab-settings" role="tabpanel" aria-labelledby="settings-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-dark">Configuración General</h4>
+                            <p class="text-muted small mb-0">Gestiona los detalles principales y la imagen de tu negocio.</p>
+                        </div>
+                        <button class="btn btn-outline-primary fw-bold shadow-sm d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#registerBusinessModal" style="padding: 10px 18px; border-radius: 8px;">
+                            <i class="bi bi-plus-circle"></i> Registrar otra sucursal
+                        </button>
+                    </div>
+
                     <div class="row g-4">
-                        <div class="col-lg-7">
-                            <div class="card border-0 p-4 shadow-sm">
-                                <h5 class="fw-bold mb-3 text-dark">Editar Información del Negocio</h5>
-                                <form id="editBusinessForm">
-                                    <input type="hidden" id="editBusinessId" name="editBusinessId">
-                                    <div class="mb-3">
-                                        <label class="form-label">Nombre del negocio</label>
-                                        <input type="text" id="editBusinessName" name="editBusinessName" class="form-control" placeholder="Ej. Barbería Central" required>
+                        <!-- Columna Izquierda: Branding y Vista Previa del Logo -->
+                        <div class="col-lg-4">
+                            <div class="card border-0 p-4 shadow-sm text-center h-100 d-flex flex-column justify-content-between" style="min-height: 380px;">
+                                <div>
+                                    <h5 class="fw-bold mb-3 text-dark">Imagen de Marca</h5>
+                                    <p class="text-muted small mb-4">Esta imagen se mostrará a los clientes al agendar turnos.</p>
+                                    
+                                    <div class="mx-auto mb-4 d-flex align-items-center justify-content-center border border-light-subtle rounded-3 shadow-inner bg-light" style="width: 140px; height: 140px; overflow: hidden; position: relative;">
+                                        <img id="logoPreviewImg" src="" class="w-100 h-100 object-fit-cover" style="display: none;" alt="Logo del Negocio">
+                                        <div id="logoPreviewPlaceholder" class="fs-1 fw-bold text-primary" style="display: flex;">TY</div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Descripción</label>
-                                        <textarea id="editBusinessDescription" name="editBusinessDescription" class="form-control" placeholder="Descripción breve..." rows="3" style="resize: none;"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Dirección comercial</label>
-                                        <input type="text" id="editBusinessAddress" name="editBusinessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA">
-                                    </div>
-                                    <div class="mb-4">
-                                        <label class="form-label">Enlace del Logo (URL)</label>
-                                        <input type="url" id="editBusinessLogoUrl" name="editBusinessLogoUrl" class="form-control" placeholder="Ej. https://tuservicio.com/logo.png">
-                                    </div>
-                                    <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Actualizar negocio</button>
-                                </form>
+                                </div>
+                                <div class="text-start">
+                                    <label class="form-label" for="editBusinessLogoUrl">Enlace del Logo (URL)</label>
+                                    <input type="url" id="editBusinessLogoUrl" name="editBusinessLogoUrl" form="editBusinessForm" class="form-control" placeholder="Ej. https://tuservicio.com/logo.png">
+                                    <div class="form-text small text-muted mt-1" style="font-size: 0.75rem;">Ingresa una URL directa a la imagen del logo.</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="col-lg-5">
-                            <div class="card border-0 p-4 shadow-sm">
-                                <h5 class="fw-bold mb-3 text-dark">Registrar Otro Negocio</h5>
-                                <p class="text-muted small">Si manejas más de una sucursal, puedes registrarla en este formulario.</p>
-                                <form id="registerBusinessForm">
-                                    <div class="mb-3">
-                                        <label class="form-label">Nombre del negocio</label>
-                                        <input type="text" name="businessName" class="form-control" placeholder="Ej. Barbería Sucursal Norte" required>
+                        <!-- Columna Derecha: Formulario de Información Principal -->
+                        <div class="col-lg-8">
+                            <div class="card border-0 p-4 shadow-sm h-100 d-flex flex-column justify-content-between" style="min-height: 380px;">
+                                <h5 class="fw-bold mb-3 text-dark">Editar Información del Negocio</h5>
+                                <form id="editBusinessForm" class="flex-grow-1 d-flex flex-column justify-content-between">
+                                    <input type="hidden" id="editBusinessId" name="editBusinessId">
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="editBusinessName">Nombre del negocio</label>
+                                            <input type="text" id="editBusinessName" name="editBusinessName" class="form-control" placeholder="Ej. Barbería Central" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="editBusinessAddress">Dirección comercial</label>
+                                            <input type="text" id="editBusinessAddress" name="editBusinessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA">
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Descripción</label>
-                                        <textarea name="businessDescription" class="form-control" placeholder="Descripción breve..." rows="2" style="resize: none;"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Dirección comercial</label>
-                                        <input type="text" name="businessAddress" class="form-control" placeholder="Ej. Av. Cabildo 2345, CABA">
-                                    </div>
+                                    
                                     <div class="mb-4">
-                                        <label class="form-label">Enlace del Logo (URL)</label>
-                                        <input type="url" name="businessLogoUrl" class="form-control" placeholder="Ej. https://tuservicio.com/logo-norte.png">
+                                        <label class="form-label" for="editBusinessDescription">Descripción</label>
+                                        <textarea id="editBusinessDescription" name="editBusinessDescription" class="form-control" placeholder="Descripción breve de los servicios..." rows="4" style="resize: none;"></textarea>
                                     </div>
-                                    <button class="btn btn-outline-primary w-100 fw-bold shadow-sm" type="submit">Registrar nuevo negocio</button>
+                                    
+                                    <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Guardar cambios</button>
                                 </form>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Fila 2: Danger Zone (Zona de Peligro) -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card border-0 p-4 shadow-sm" style="border-left: 4px solid #d93838 !important;">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                    <div>
+                                        <h5 class="fw-bold text-danger mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Zona de Peligro</h5>
+                                        <p class="text-muted small mb-0">Eliminar permanentemente este negocio. Todos los turnos, servicios y configuraciones asociadas serán borrados de forma irreversible.</p>
+                                    </div>
+                                    <button id="btnDeleteBusinessDashboard" class="btn btn-danger fw-bold px-4 py-2" type="button" style="border-radius: 8px;">
+                                        <i class="bi bi-trash3 me-1"></i> Eliminar Negocio
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Registrar Nuevo Negocio -->
+    <div class="modal fade" id="registerBusinessModal" tabindex="-1" aria-labelledby="registerBusinessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bold text-dark fs-4" id="registerBusinessModalLabel">Registrar Nuevo Negocio / Sucursal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body px-4 pb-4 pt-2">
+                    <form id="registerBusinessForm">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del negocio</label>
+                            <input type="text" name="businessName" class="form-control" placeholder="Ej. Barbería Sucursal Norte" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea name="businessDescription" class="form-control" placeholder="Descripción breve de los servicios..." rows="2" style="resize: none;"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dirección comercial</label>
+                            <input type="text" name="businessAddress" class="form-control" placeholder="Ej. Av. Cabildo 2345, CABA">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Enlace del Logo (URL)</label>
+                            <input type="url" name="businessLogoUrl" class="form-control" placeholder="Ej. https://tuservicio.com/logo-norte.png">
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="border-radius:8px;">Cancelar</button>
+                            <button type="submit" class="btn btn-primary px-4" style="border-radius:8px;">Registrar Negocio</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

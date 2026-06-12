@@ -233,7 +233,10 @@ function switchBusiness(businessId) {
     if (editName) editName.value = biz.name || '';
     if (editDesc) editDesc.value = biz.description || '';
     if (editAddr) editAddr.value = biz.address || '';
-    if (editLogo) editLogo.value = biz.logo_url || '';
+    if (editLogo) {
+        editLogo.value = biz.logo_url || '';
+        updateLogoPreview(biz.logo_url, biz.name);
+    }
 
     // Actualizar métricas fijas
     if (metricActiveServices) {
@@ -249,6 +252,24 @@ function switchBusiness(businessId) {
 
     // Cargar agenda del día
     loadAgenda();
+}
+
+// Helper para actualizar la previsualización del logo
+function updateLogoPreview(url, name) {
+    const logoPreviewImg = document.getElementById('logoPreviewImg');
+    const logoPreviewPlaceholder = document.getElementById('logoPreviewPlaceholder');
+    if (!logoPreviewImg || !logoPreviewPlaceholder) return;
+    const initials = (name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    if (url && url.trim() !== '') {
+        logoPreviewImg.src = url;
+        logoPreviewImg.alt = name || 'Logo';
+        logoPreviewImg.style.display = 'block';
+        logoPreviewPlaceholder.style.display = 'none';
+    } else {
+        logoPreviewImg.style.display = 'none';
+        logoPreviewPlaceholder.innerText = initials || 'TY';
+        logoPreviewPlaceholder.style.display = 'flex';
+    }
 }
 
 // 9. RENDERIZAR TABLA DE SERVICIOS
@@ -615,6 +636,61 @@ function setupFormSubmits() {
     if (firstBusinessForm) {
         firstBusinessForm.addEventListener('submit', (e) => handleRegisterBusiness(e, firstBusinessForm));
     }
+
+    // F. Previsualización dinámica del logo en edición
+    const editLogoInput = document.getElementById('editBusinessLogoUrl');
+    if (editLogoInput) {
+        editLogoInput.addEventListener('input', (e) => {
+            const name = document.getElementById('editBusinessName').value.trim();
+            updateLogoPreview(e.target.value, name);
+        });
+
+        const logoPreviewImg = document.getElementById('logoPreviewImg');
+        if (logoPreviewImg) {
+            logoPreviewImg.addEventListener('error', () => {
+                logoPreviewImg.style.display = 'none';
+                const logoPreviewPlaceholder = document.getElementById('logoPreviewPlaceholder');
+                if (logoPreviewPlaceholder) logoPreviewPlaceholder.style.display = 'flex';
+            });
+        }
+    }
+
+    // G. Zona de Peligro: Eliminar Negocio
+    const btnDeleteBusinessDashboard = document.getElementById('btnDeleteBusinessDashboard');
+    if (btnDeleteBusinessDashboard) {
+        btnDeleteBusinessDashboard.addEventListener('click', async () => {
+            const biz = businesses.find(b => b.id == currentBusinessId);
+            if (!biz) return;
+
+            const warningMsg = `¡CUIDADO! ¿Estás seguro de que deseas eliminar permanentemente el negocio "${biz.name}"?\n\nEsta acción eliminará todos los turnos agendados, servicios y horarios del negocio, y es irreversible.`;
+            
+            if (!confirm(warningMsg)) return;
+
+            btnDeleteBusinessDashboard.disabled = true;
+
+            try {
+                const res = await fetch(`${apiUrl}/businesses?id=${currentBusinessId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('Negocio eliminado correctamente.');
+                    if (data.role) {
+                        localStorage.setItem('userRole', data.role);
+                    }
+                    window.location.reload();
+                } else {
+                    alert('No se pudo eliminar el negocio: ' + (data.message || 'Error desconocido'));
+                    btnDeleteBusinessDashboard.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error al intentar eliminar el negocio:', error);
+                alert('Error de conexión. Por favor inténtalo de nuevo.');
+                btnDeleteBusinessDashboard.disabled = false;
+            }
+        });
+    }
 }
 
 // 14. PROCESAR CREACIÓN DE NEGOCIO
@@ -641,6 +717,15 @@ async function handleRegisterBusiness(e, formElement) {
         if (res.ok) {
             alert('Negocio registrado con éxito.');
             formElement.reset();
+
+            // Cerrar el modal si existe
+            const modalEl = document.getElementById('registerBusinessModal');
+            if (modalEl) {
+                const bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            }
 
             // Si es el primer negocio, actualizar también el rol del usuario en la sesión local
             const newRole = result.owner && result.owner.role ? result.owner.role : 'owner';
