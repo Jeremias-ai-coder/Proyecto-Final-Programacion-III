@@ -96,7 +96,7 @@ function renderBusinessCards(items) {
     
     for (const business of items) {
         const card = document.createElement('div');
-        card.className = 'col-sm-6 col-md-4 col-lg-3';
+        card.className = 'col-sm-6 col-md-6 col-lg-4';
         const initials = (business.name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
         
         // Elegir si pintar el logo o las iniciales
@@ -152,7 +152,7 @@ function renderBusinessCards(items) {
 function filterBusinesses(items, query) {
     const userLat = parseFloat(localStorage.getItem('userLat')) || null;
     const userLng = parseFloat(localStorage.getItem('userLng')) || null;
-    const maxDistance = parseInt(localStorage.getItem('maxDistance'), 10) || 50;
+    const maxDistance = parseInt(localStorage.getItem('maxDistance'), 10) || 25;
 
     let filtered = items;
 
@@ -172,6 +172,19 @@ function filterBusinesses(items, query) {
         filtered = filtered.filter(b => {
             const text = `${b.name} ${b.description || ''} ${b.address || ''}`.toLowerCase();
             return text.includes(query.toLowerCase());
+        });
+    }
+
+    // 3. Ordenar por cercanía (los más cercanos primero) si tenemos ubicación del usuario
+    if (userLat !== null && userLng !== null) {
+        filtered = [...filtered].sort((a, b) => {
+            if (a.latitude === null || a.longitude === null) return 1;
+            if (b.latitude === null || b.longitude === null) return -1;
+            const distA = calculateDistance(userLat, userLng, parseFloat(a.latitude), parseFloat(a.longitude));
+            const distB = calculateDistance(userLat, userLng, parseFloat(b.latitude), parseFloat(b.longitude));
+            if (distA === null) return 1;
+            if (distB === null) return -1;
+            return distA - distB;
         });
     }
 
@@ -459,17 +472,31 @@ async function init() {
     const userLocationText = document.getElementById('userLocationText');
     const manualAddressInput = document.getElementById('manualAddressInput');
     const manualLocationError = document.getElementById('manualLocationError');
+    const toggleFarBusinesses = document.getElementById('toggleFarBusinesses');
+    const toggleFarBusinessesContainer = document.getElementById('toggleFarBusinessesContainer');
 
     // Inicializar controles desde localStorage
     const savedLat = localStorage.getItem('userLat');
     const savedLng = localStorage.getItem('userLng');
     const savedAddress = localStorage.getItem('userAddress');
-    const savedDistance = localStorage.getItem('maxDistance') || '50';
+    const savedDistance = localStorage.getItem('maxDistance') || '25';
 
     if (distanceRange) {
         distanceRange.value = savedDistance;
         updateDistanceLabel(savedDistance);
     }
+
+    if (toggleFarBusinesses) {
+        toggleFarBusinesses.checked = (parseInt(savedDistance, 10) > 25);
+    }
+
+    function updateToggleContainerVisibility() {
+        if (toggleFarBusinessesContainer) {
+            const hasLocation = localStorage.getItem('userLat') !== null;
+            toggleFarBusinessesContainer.style.display = hasLocation ? 'block' : 'none';
+        }
+    }
+    updateToggleContainerVisibility();
 
     if (savedLat && savedLng && userLocationText) {
         userLocationText.innerHTML = `📍 <strong>${savedAddress || 'Ubicación guardada'}</strong>`;
@@ -497,6 +524,34 @@ async function init() {
             const val = e.target.value;
             localStorage.setItem('maxDistance', val);
             updateDistanceLabel(val);
+
+            // Sincronizar switch
+            if (toggleFarBusinesses) {
+                toggleFarBusinesses.checked = (parseInt(val, 10) > 25);
+            }
+
+            triggerFiltering();
+        });
+    }
+
+    // Switch rápido para mostrar/ocultar lejanos
+    if (toggleFarBusinesses) {
+        toggleFarBusinesses.addEventListener('change', () => {
+            if (toggleFarBusinesses.checked) {
+                // Seleccionar "Cualquiera" (205)
+                localStorage.setItem('maxDistance', '205');
+                if (distanceRange) {
+                    distanceRange.value = '205';
+                    updateDistanceLabel('205');
+                }
+            } else {
+                // Regresar a 25 km
+                localStorage.setItem('maxDistance', '25');
+                if (distanceRange) {
+                    distanceRange.value = '25';
+                    updateDistanceLabel('25');
+                }
+            }
             triggerFiltering();
         });
     }
@@ -504,6 +559,11 @@ async function init() {
     // Geolocalización
     if (btnUseGeolocation) {
         btnUseGeolocation.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('La geolocalización no está soportada por tu navegador o requiere una conexión segura (HTTPS).');
+                return;
+            }
+
             const originalContent = btnUseGeolocation.innerHTML;
             btnUseGeolocation.disabled = true;
             btnUseGeolocation.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Buscando...';
@@ -541,11 +601,20 @@ async function init() {
                     btnUseGeolocation.disabled = false;
                     btnUseGeolocation.innerHTML = originalContent;
 
+                    updateToggleContainerVisibility();
                     triggerFiltering();
                 },
                 (error) => {
                     console.error('Geolocation error', error);
-                    alert('No se pudo obtener tu ubicación actual. Por favor, ingrésala manualmente.');
+                    let errorMsg = 'No se pudo obtener tu ubicación actual. Por favor, ingrésala manualmente.';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errorMsg = 'Permiso de ubicación denegado. Habilita los permisos de ubicación en tu navegador para Turnos Ya.';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errorMsg = 'La información de ubicación no está disponible actualmente en tu dispositivo.';
+                    } else if (error.code === error.TIMEOUT) {
+                        errorMsg = 'Se agotó el tiempo de espera al intentar obtener tu ubicación.';
+                    }
+                    alert(errorMsg);
                     btnUseGeolocation.disabled = false;
                     btnUseGeolocation.innerHTML = originalContent;
                 },
@@ -588,6 +657,7 @@ async function init() {
                         const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('manualLocationCollapse'));
                         if (bsCollapse) bsCollapse.hide();
 
+                        updateToggleContainerVisibility();
                         triggerFiltering();
                     } else {
                         throw new Error('Dirección no encontrada');
@@ -619,6 +689,7 @@ async function init() {
                 userLocationText.innerHTML = 'No se ha detectado tu ubicación actual.';
             }
             btnClearLocationFilter.style.display = 'none';
+            updateToggleContainerVisibility();
             triggerFiltering();
         });
     }

@@ -127,7 +127,7 @@
                             <label class="form-label">Enlace del Logo (URL)</label>
                             <input type="url" name="businessLogoUrl" class="form-control" placeholder="Ej. https://tuservicio.com/logo.png">
                         </div>
-                        <button id="nextToSchedule" class="btn btn-primary w-100 py-2 fw-bold" type="button">Siguiente: Agregar Horarios</button>
+                        <button id="nextToSchedule" class="btn btn-primary w-100 py-2 fw-bold" type="submit">Siguiente: Agregar Horarios</button>
                     </form>
                 </div>
 
@@ -226,37 +226,7 @@
                 }
             }
 
-            // Fallback inline handler: asegura redireccionamiento correcto
-            (function(){
-                try {
-                    const btn = document.getElementById('nextToSchedule');
-                    const form = document.getElementById('createBusinessForm');
-                    if (!btn || !form) return;
-                    btn.addEventListener('click', function(ev){
-                        ev.preventDefault();
-                        var name = (form.elements['businessName'] || {}).value || '';
-                        var description = (form.elements['businessDescription'] || {}).value || '';
-                        var address = (form.elements['businessAddress'] || {}).value || '';
-                        var logoUrl = (form.elements['businessLogoUrl'] || {}).value || '';
-                        if (!name.trim()) {
-                            var m = document.getElementById('businessMessage');
-                            if (m) { m.textContent = 'El nombre del negocio es obligatorio.'; m.className = 'alert alert-danger py-2 small text-center'; m.classList.remove('d-none'); }
-                            return;
-                        }
-                        var pending = { 
-                            name: name.trim(), 
-                            description: description.trim(), 
-                            address: address.trim(),
-                            logo_url: logoUrl.trim(),
-                            owner_id: parseInt(localStorage.getItem('userId') || '0', 10) 
-                        };
-                        localStorage.setItem('pendingBusiness', JSON.stringify(pending));
-                        window.location.href = pageBasePath + '/agregar-horario';
-                    });
-                } catch (e) {
-                    console.error('Fallback handler error', e);
-                }
-            })();
+            // Fallback inline handler removido para usar crear_negocio.js de forma exclusiva
         })();
     </script>
 </body>

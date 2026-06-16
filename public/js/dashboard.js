@@ -598,7 +598,17 @@ function setupFormSubmits() {
             if (submitBtn) submitBtn.disabled = true;
 
             const addressVal = document.getElementById('editBusinessAddress').value.trim();
-            const coords = await geocodeAddress(addressVal);
+            
+            // Validar dirección si fue ingresada
+            let coords = { latitude: null, longitude: null };
+            if (addressVal !== '') {
+                coords = await geocodeAddress(addressVal);
+                if (coords.latitude === null || coords.longitude === null) {
+                    alert('La dirección ingresada no existe o no se pudo validar. Por favor, asegúrate de incluir calle, número y ciudad válidos (ej: Av. Pellegrini 1500, Rosario).');
+                    if (submitBtn) submitBtn.disabled = false;
+                    return;
+                }
+            }
 
             const payload = {
                 id: currentBusinessId,
@@ -725,8 +735,18 @@ async function handleRegisterBusiness(e, formElement) {
     if (submitBtn) submitBtn.disabled = true;
 
     const formData = new FormData(formElement);
-    const addressVal = formData.get('businessAddress');
-    const coords = await geocodeAddress(addressVal);
+    const addressVal = formData.get('businessAddress') ? formData.get('businessAddress').trim() : '';
+    
+    // Validar dirección si fue ingresada
+    let coords = { latitude: null, longitude: null };
+    if (addressVal !== '') {
+        coords = await geocodeAddress(addressVal);
+        if (coords.latitude === null || coords.longitude === null) {
+            alert('La dirección ingresada no existe o no se pudo validar. Por favor, asegúrate de incluir calle, número y ciudad válidos (ej: Av. Pellegrini 1500, Rosario).');
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
+    }
 
     const payload = {
         name: formData.get('businessName'),

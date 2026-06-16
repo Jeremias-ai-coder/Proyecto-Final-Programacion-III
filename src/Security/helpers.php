@@ -47,3 +47,12 @@ if (!function_exists('validateRole')) {
         return in_array($role, $validRoles, true);
     }
 }
+
+if (!function_exists('jsonResponse')) {
+    function jsonResponse($data, $status = 200) {
+        header('Content-Type: application/json');
+        http_response_code($status);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}

@@ -30,14 +30,30 @@ function hideMessage() {
     businessMessage.classList.add('d-none');
 }
 
+// Helper de geocodificación mediante Nominatim
+async function geocodeAddress(address) {
+    if (!address) return { latitude: null, longitude: null };
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) {
+                return {
+                    latitude: parseFloat(data[0].lat),
+                    longitude: parseFloat(data[0].lon)
+                };
+            }
+        }
+    } catch (e) {
+        console.warn('Nominatim geocoding failed', e);
+    }
+    return { latitude: null, longitude: null };
+}
+
 function initCrearNegocio() {
-    const businessStep = document.getElementById('businessStep');
     const createForm = document.getElementById('createBusinessForm');
     const nextButton = document.getElementById('nextToSchedule');
     const userId = localStorage.getItem('userId');
-    const userRole = localStorage.getItem('userRole');
-
-    let pendingBusiness = null;
 
     if (!userId) {
         alert('Debes iniciar sesión para ingresar tu negocio.');
@@ -45,8 +61,7 @@ function initCrearNegocio() {
         return;
     }
 
-    // Controlador de envío primario (maneja Enter y el envío del formulario)
-    createForm.addEventListener('submit', (event) => {
+    createForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         hideMessage();
 
@@ -61,64 +76,39 @@ function initCrearNegocio() {
             return;
         }
 
-        pendingBusiness = {
+        const originalText = nextButton ? nextButton.textContent : 'Siguiente: Agregar Horarios';
+        if (nextButton) {
+            nextButton.disabled = true;
+            nextButton.textContent = 'Validando dirección...';
+        }
+
+        let coords = { latitude: null, longitude: null };
+        if (address !== '') {
+            coords = await geocodeAddress(address);
+            if (coords.latitude === null || coords.longitude === null) {
+                showBusinessMessage('La dirección ingresada no existe o no se pudo validar. Por favor, asegúrate de incluir calle, número y ciudad válidos (ej: Av. Pellegrini 1500, Rosario).', 'danger');
+                if (nextButton) {
+                    nextButton.disabled = false;
+                    nextButton.textContent = originalText;
+                }
+                return;
+            }
+        }
+
+        const pendingBusiness = {
             name,
             description,
             address,
             logo_url: logoUrl,
             owner_id: parseInt(userId, 10),
+            latitude: coords.latitude,
+            longitude: coords.longitude
         };
 
         // Guardar temporalmente y redirigir a la vista de agregar horario
         localStorage.setItem('pendingBusiness', JSON.stringify(pendingBusiness));
         window.location.href = pageBasePath + '/agregar-horario';
     });
-
-    // Also bind click on the button directly to ensure immediate response
-    if (nextButton) {
-        nextButton.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            // Dispara la misma lógica de envío que el controlador de formulario
-            createForm.requestSubmit && createForm.requestSubmit();
-            // Alternativa para navegadores más antiguos
-            try {
-                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                createForm.dispatchEvent(submitEvent);
-            } catch (e) {
-                // ignorar
-            }
-        });
-    }
-
-    // Alternativa robusta: controlador de clic directo que lee los campos, guarda el negocio pendiente y redirige.
-    if (nextButton) {
-        nextButton.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            try {
-                const name = (createForm.elements['businessName'] || {}).value || '';
-                const description = (createForm.elements['businessDescription'] || {}).value || '';
-                const address = (createForm.elements['businessAddress'] || {}).value || '';
-                const logoUrl = (createForm.elements['businessLogoUrl'] || {}).value || '';
-                if (!name.trim()) {
-                    showBusinessMessage('El nombre del negocio es obligatorio.', 'danger');
-                    return;
-                }
-                const pb = { 
-                    name: name.trim(), 
-                    description: description.trim(), 
-                    address: address.trim(),
-                    logo_url: logoUrl.trim(),
-                    owner_id: parseInt(userId, 10) 
-                };
-                localStorage.setItem('pendingBusiness', JSON.stringify(pb));
-                // depuración
-                console.debug('pendingBusiness saved (click fallback)', pb);
-                window.location.href = pageBasePath + '/agregar-horario';
-            } catch (err) {
-                console.error('Error manejando click de agregar horario', err);
-            }
-        });
-    }
 }
 
 if (document.readyState === 'loading') {

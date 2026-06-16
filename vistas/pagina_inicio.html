@@ -635,131 +635,141 @@ require_once __DIR__ . '/../src/bootstrap.php';
     <div class="container pb-5">
         <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
 
-        <!-- Panel de Filtro de Ubicación y Cercanía -->
-        <div class="card custom-card mb-4 border-0 shadow-sm" id="locationFilterPanel" style="border-radius: 14px;">
-            <div class="card-body p-4">
-                <div class="row align-items-center g-3">
-                    <!-- Columna 1: Información de ubicación del usuario -->
-                    <div class="col-lg-4 col-md-5">
+        <div class="row g-4 mb-5">
+            <!-- Columna Izquierda: Filtros de búsqueda (Estilo Mercado Libre) -->
+            <div class="col-lg-3">
+                <div class="card custom-card border-0 shadow-sm p-4" id="sidebarFilters" style="border-radius: 14px; background: #ffffff;">
+                    <h5 class="fw-bold mb-4 text-dark d-flex align-items-center gap-2" style="font-size: 1.15rem;">
+                        <i class="bi bi-sliders text-primary"></i> Filtros de búsqueda
+                    </h5>
+                    
+                    <!-- Sección: Ubicación -->
+                    <div class="filter-section mb-4">
                         <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="fs-5 text-primary"><i class="bi bi-geo-alt-fill"></i></span>
-                            <h6 class="fw-bold mb-0 text-dark">Tu Ubicación</h6>
+                            <span class="fs-6 text-primary"><i class="bi bi-geo-alt-fill"></i></span>
+                            <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">Tu Ubicación</h6>
                         </div>
-                        <div class="text-muted small mb-3" id="userLocationText" style="min-height: 20px;">
+                        <div class="text-muted small mb-3" id="userLocationText" style="min-height: 20px; font-size: 0.85rem;">
                             No se ha detectado tu ubicación actual.
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold d-inline-flex align-items-center gap-1" id="btnUseGeolocation" style="border-radius: 8px;">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold d-inline-flex align-items-center justify-content-center gap-1" id="btnUseGeolocation" style="border-radius: 8px;">
                                 <i class="bi bi-crosshair"></i> Mi Ubicación
                             </button>
                             <button type="button" class="btn btn-light btn-sm px-3 fw-semibold" id="btnToggleManualLocation" data-bs-toggle="collapse" data-bs-target="#manualLocationCollapse" style="border-radius: 8px;">
                                 Ingresar dirección
                             </button>
                         </div>
-                    </div>
-                    
-                    <!-- Columna 2: Rango de distancia -->
-                    <div class="col-lg-5 col-md-7 border-start border-light ps-md-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label for="distanceRange" class="fw-bold text-dark small mb-0">Distancia Máxima</label>
-                            <span class="badge bg-primary px-3 py-1.5 rounded-pill" id="distanceRangeVal" style="font-size: 0.85rem; font-weight: 700;">50 km</span>
+                        
+                        <!-- Input manual colapsable -->
+                        <div class="collapse mt-3" id="manualLocationCollapse">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <label class="form-label fw-semibold text-muted small mb-2">Ciudad o dirección</label>
+                                <div class="input-group shadow-sm" style="border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
+                                    <input type="text" class="form-control border-0 px-2 py-1.5 small" id="manualAddressInput" placeholder="Ej: Rosario, Santa Fe" style="font-size: 0.85rem;">
+                                    <button class="btn btn-primary fw-bold px-3 border-0 btn-sm" type="button" id="btnSearchManualAddress" style="font-size: 0.85rem;">Buscar</button>
+                                </div>
+                                <div class="text-danger small mt-1" id="manualLocationError" style="display: none;"></div>
+                            </div>
                         </div>
-                        <input type="range" class="form-range" id="distanceRange" min="5" max="205" step="5" value="50">
-                        <div class="d-flex justify-content-between text-muted" style="font-size: 0.75rem; font-weight: 500;">
-                            <span>5 km</span>
-                            <span>50 km</span>
-                            <span>100 km</span>
-                            <span>150 km</span>
-                            <span>Cualquiera</span>
-                        </div>
-                    </div>
 
-                    <!-- Columna 3: Estado y botón de limpiar -->
-                    <div class="col-lg-3 col-md-12 text-lg-end">
-                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2.5 fw-bold" id="btnClearLocationFilter" style="border-radius: 8px; display: none;">
-                            <i class="bi bi-x-circle me-1"></i> Quitar Filtro de Ubicación
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2.5 fw-bold mt-3" id="btnClearLocationFilter" style="border-radius: 8px; display: none;">
+                            <i class="bi bi-x-circle me-1"></i> Quitar Filtro
                         </button>
                     </div>
-                </div>
+                    
+                    <hr class="my-4 text-secondary opacity-25">
 
-                <!-- Input manual colapsable -->
-                <div class="collapse mt-3" id="manualLocationCollapse">
-                    <div class="p-3 bg-light rounded-3 border">
-                        <label class="form-label fw-semibold text-muted small mb-2">Escribe tu ciudad o dirección</label>
-                        <div class="input-group shadow-sm" style="border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
-                            <input type="text" class="form-control border-0" id="manualAddressInput" placeholder="Ej: Rosario, Santa Fe, Argentina">
-                            <button class="btn btn-primary fw-bold px-4 border-0" type="button" id="btnSearchManualAddress">Buscar</button>
+                    <!-- Sección: Distancia -->
+                    <div class="filter-section">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label for="distanceRange" class="fw-bold text-dark small mb-0">Distancia Máxima</label>
+                            <span class="badge bg-primary px-3 py-1.5 rounded-pill" id="distanceRangeVal" style="font-size: 0.85rem; font-weight: 700;">25 km</span>
                         </div>
-                        <div class="text-danger small mt-1" id="manualLocationError" style="display: none;"></div>
+                        <input type="range" class="form-range" id="distanceRange" min="5" max="205" step="5" value="25">
+                        <div class="d-flex justify-content-between text-muted" style="font-size: 0.75rem; font-weight: 500;">
+                            <span>5 km</span>
+                            <span>25 km</span>
+                            <span>100 km</span>
+                            <span>Cualquiera</span>
+                        </div>
+                        <div class="form-check form-switch mt-4" id="toggleFarBusinessesContainer" style="display: none;">
+                            <input class="form-check-input" type="checkbox" id="toggleFarBusinesses">
+                            <label class="form-check-label small fw-semibold text-muted cursor-pointer" for="toggleFarBusinesses">
+                                Mostrar también negocios más lejanos (> 25 km)
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Grilla de negocios -->
-        <div class="row g-4" id="businessGrid">
-            <?php
-            require_once __DIR__ . '/../src/bootstrap.php';
-            use App\Models\Business;
+            <!-- Columna Derecha: Grilla de negocios -->
+            <div class="col-lg-9">
+                <div class="row g-4" id="businessGrid">
+                    <?php
+                    require_once __DIR__ . '/../src/bootstrap.php';
+                    use App\Models\Business;
 
-            try {
-                $businesses = Business::with(['owner','services','workSchedules'])
-                    ->withAvg('reviews', 'rating')
-                    ->withCount('reviews')
-                    ->get();
-            } catch (Throwable $e) {
-                $businesses = collect();
-            }
+                    try {
+                        $businesses = Business::with(['owner','services','workSchedules'])
+                            ->withAvg('reviews', 'rating')
+                            ->withCount('reviews')
+                            ->get();
+                    } catch (Throwable $e) {
+                        $businesses = collect();
+                    }
 
-            if (empty($businesses) || $businesses->isEmpty()) {
-                echo '<div class="col-12"><div class="alert alert-info text-center py-4">No se encontraron negocios activos aún. ¡Regístrate y sube el tuyo!</div></div>';
-            } else {
-                foreach ($businesses as $business) {
-                    $name = htmlspecialchars($business->name ?? '', ENT_QUOTES, 'UTF-8');
-                    $description = htmlspecialchars($business->description ?? 'Sin descripción', ENT_QUOTES, 'UTF-8');
-                    $address = $business->address ? htmlspecialchars($business->address, ENT_QUOTES, 'UTF-8') : '';
-                    $logoUrl = $business->logo_url ? htmlspecialchars($business->logo_url, ENT_QUOTES, 'UTF-8') : '';
-                    $ownerName = $business->owner ? htmlspecialchars($business->owner->name, ENT_QUOTES, 'UTF-8') : 'N/D';
-                    
-                    $parts = preg_split('/\s+/', trim($business->name ?? ''));
-                    $initials = '';
-                    if (!empty($parts)) {
-                        foreach (array_slice($parts, 0, 2) as $p) {
-                            $initials .= mb_strtoupper(mb_substr($p, 0, 1));
+                    if (empty($businesses) || $businesses->isEmpty()) {
+                        echo '<div class="col-12"><div class="alert alert-info text-center py-4">No se encontraron negocios activos aún. ¡Regístrate y sube el tuyo!</div></div>';
+                    } else {
+                        foreach ($businesses as $business) {
+                            $name = htmlspecialchars($business->name ?? '', ENT_QUOTES, 'UTF-8');
+                            $description = htmlspecialchars($business->description ?? 'Sin descripción', ENT_QUOTES, 'UTF-8');
+                            $address = $business->address ? htmlspecialchars($business->address, ENT_QUOTES, 'UTF-8') : '';
+                            $logoUrl = $business->logo_url ? htmlspecialchars($business->logo_url, ENT_QUOTES, 'UTF-8') : '';
+                            $ownerName = $business->owner ? htmlspecialchars($business->owner->name, ENT_QUOTES, 'UTF-8') : 'N/D';
+                            
+                            $parts = preg_split('/\s+/', trim($business->name ?? ''));
+                            $initials = '';
+                            if (!empty($parts)) {
+                                foreach (array_slice($parts, 0, 2) as $p) {
+                                    $initials .= mb_strtoupper(mb_substr($p, 0, 1));
+                                }
+                            }
+                            if (!$initials) $initials = 'TY';
+                            
+                            // Elegir si pintar el logo o las iniciales
+                            $logoContent = $logoUrl 
+                                ? "<img src=\"{$logoUrl}\" class=\"w-100 h-100 object-fit-cover rounded-circle shadow-sm p-1\" alt=\"{$name}\" onerror=\"this.outerHTML='<div class=\'avatar\'>{$initials}</div>'\">"
+                                : "<div class=\"avatar\">{$initials}</div>";
+
+                            $addressContent = $address 
+                                ? "<p class=\"mb-2 small text-muted text-truncate\" title=\"{$address}\"><i class=\"bi bi-geo-alt me-1\"></i>{$address}</p>"
+                                : "<p class=\"mb-2 small text-muted text-truncate text-secondary italic\"><i class=\"bi bi-geo-alt me-1\"></i>Dirección no especificada</p>";
+                            $ratingAvg = $business->reviews_avg_rating ? number_format($business->reviews_avg_rating, 1) : null;
+                            $ratingCount = $business->reviews_count ?? 0;
+                            $ratingHtml = $ratingAvg 
+                                ? "<span class=\"badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2\" style=\"width: fit-content;\"><i class=\"bi bi-star-fill text-warning me-1\"></i>{$ratingAvg} ({$ratingCount})</span>"
+                                : "<span class=\"badge bg-light text-muted border border-light-subtle py-1 px-2 rounded-pill small mb-2\" style=\"width: fit-content;\">Sin calificaciones</span>";
+
+                            echo "<div class=\"col-sm-6 col-md-6 col-lg-4 server-rendered\">";
+                            echo "<div class=\"ml-card h-100 d-flex flex-column shadow-sm\">";
+                            echo "<div class=\"ml-image\"><div style=\"width:72px; height:72px; display:flex; align-items:center; justify-content:center;\">{$logoContent}</div></div>";
+                            echo "<div class=\"card-body d-flex flex-column\">";
+                            echo "<h5 class=\"card-title text-truncate\">{$name}</h5>";
+                            echo "<div class=\"d-flex align-items-center mb-2\">{$ratingHtml}</div>";
+                            echo "<p class=\"card-text text-truncate mb-2\">{$description}</p>";
+                            echo "{$addressContent}";
+                            echo "<p class=\"mb-3 small text-muted\">Dueño: {$ownerName}</p>";
+                            echo "<div class=\"actions d-flex justify-content-between align-items-center mt-auto\">";
+                            echo "<button class=\"btn btn-light btn-sm btn-view-business\" data-business-id=\"{$business->id}\">Ver tienda</button>";
+                            echo "<button class=\"btn btn-outline-primary btn-sm btn-select-business\" data-business-id=\"{$business->id}\">Agendar turno</button>";
+                            echo "</div></div></div></div>";
                         }
                     }
-                    if (!$initials) $initials = 'TY';
-                    
-                    // Elegir si pintar el logo o las iniciales
-                    $logoContent = $logoUrl 
-                        ? "<img src=\"{$logoUrl}\" class=\"w-100 h-100 object-fit-cover rounded-circle shadow-sm p-1\" alt=\"{$name}\" onerror=\"this.outerHTML='<div class=\'avatar\'>{$initials}</div>'\">"
-                        : "<div class=\"avatar\">{$initials}</div>";
-
-                    $addressContent = $address 
-                        ? "<p class=\"mb-2 small text-muted text-truncate\" title=\"{$address}\"><i class=\"bi bi-geo-alt me-1\"></i>{$address}</p>"
-                        : "<p class=\"mb-2 small text-muted text-truncate text-secondary italic\"><i class=\"bi bi-geo-alt me-1\"></i>Dirección no especificada</p>";
-                          $ratingAvg = $business->reviews_avg_rating ? number_format($business->reviews_avg_rating, 1) : null;
-                    $ratingCount = $business->reviews_count ?? 0;
-                    $ratingHtml = $ratingAvg 
-                        ? "<span class=\"badge bg-light text-warning border border-warning-subtle py-1 px-2 rounded-pill small fw-bold mb-2\" style=\"width: fit-content;\"><i class=\"bi bi-star-fill text-warning me-1\"></i>{$ratingAvg} ({$ratingCount})</span>"
-                        : "<span class=\"badge bg-light text-muted border border-light-subtle py-1 px-2 rounded-pill small mb-2\" style=\"width: fit-content;\">Sin calificaciones</span>";
-
-                    echo "<div class=\"col-sm-6 col-md-4 col-lg-3 server-rendered\">";
-                    echo "<div class=\"ml-card h-100 d-flex flex-column shadow-sm\">";
-                    echo "<div class=\"ml-image\"><div style=\"width:72px; height:72px; display:flex; align-items:center; justify-content:center;\">{$logoContent}</div></div>";
-                    echo "<div class=\"card-body d-flex flex-column\">";
-                    echo "<h5 class=\"card-title text-truncate\">{$name}</h5>";
-                    echo "<div class=\"d-flex align-items-center mb-2\">{$ratingHtml}</div>";
-                    echo "<p class=\"card-text text-truncate mb-2\">{$description}</p>";
-                    echo "{$addressContent}";
-                    echo "<p class=\"mb-3 small text-muted\">Dueño: {$ownerName}</p>";
-                    echo "<div class=\"actions d-flex justify-content-between align-items-center mt-auto\">";
-                    echo "<button class=\"btn btn-light btn-sm btn-view-business\" data-business-id=\"{$business->id}\">Ver tienda</button>";
-                    echo "<button class=\"btn btn-outline-primary btn-sm btn-select-business\" data-business-id=\"{$business->id}\">Agendar turno</button>";
-                    echo "</div></div></div></div>";
-                }
-            }
-            ?>
+                    ?>
+                </div>
+            </div>
         </div>
 
         <!-- Sección de reserva oculta inicialmente (Rediseño Wizard Premium) -->
