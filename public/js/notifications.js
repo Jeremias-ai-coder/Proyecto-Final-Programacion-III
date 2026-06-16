@@ -5,6 +5,7 @@
     // Configuración base
     const POLL_INTERVAL = 20000; // 20 segundos
     let lastUnreadCount = 0;
+    let isInitialLoad = true;
 
     // Obtener ruta base
     const pageBasePath = (function() {
@@ -96,17 +97,27 @@
                     if (unreadCount > lastUnreadCount) {
                         this.jiggleBell();
                         
-                        // Opcional: Mostrar Toast para la última notificación entrante si es nueva
-                        const newNotifs = unread.filter(n => !document.querySelector(`.notification-item[data-id="${n.id}"]`));
-                        newNotifs.forEach(n => {
-                            this.showToast(n.title, n.message, n.type);
-                        });
+                        // Solo reproducir sonido y mostrar Toast si no es la carga inicial
+                        if (!isInitialLoad) {
+                            this.playNotificationSound();
+                            
+                            const newNotifs = unread.filter(n => !document.querySelector(`.notification-item[data-id="${n.id}"]`));
+                            newNotifs.forEach(n => {
+                                this.showToast(n.title, n.message, n.type);
+                            });
+
+                            // Refrescar la planilla de turnos (agenda) en el dashboard
+                            if (typeof window.loadAgenda === 'function') {
+                                window.loadAgenda();
+                            }
+                        }
                     }
                 } else {
                     badge.classList.add('d-none');
                 }
             }
             lastUnreadCount = unreadCount;
+            isInitialLoad = false;
 
             // Generar lista
             if (notifications.length === 0) {
@@ -217,6 +228,47 @@
                 }
             } catch (e) {
                 return '';
+            }
+        },
+
+        playNotificationSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                
+                const ctx = new AudioContext();
+                
+                // Primer tono (agudo, corto)
+                const osc1 = ctx.createOscillator();
+                const gain1 = ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                gain1.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+                osc1.connect(gain1);
+                gain1.connect(ctx.destination);
+                osc1.start();
+                osc1.stop(ctx.currentTime + 0.15);
+                
+                // Segundo tono (más agudo, un poco después)
+                setTimeout(() => {
+                    try {
+                        const osc2 = ctx.createOscillator();
+                        const gain2 = ctx.createGain();
+                        osc2.type = 'sine';
+                        osc2.frequency.setValueAtTime(880, ctx.currentTime); // A5
+                        gain2.gain.setValueAtTime(0.08, ctx.currentTime);
+                        gain2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+                        osc2.connect(gain2);
+                        gain2.connect(ctx.destination);
+                        osc2.start();
+                        osc2.stop(ctx.currentTime + 0.25);
+                    } catch (e) {
+                        console.warn('AudioContext sound 2 failed', e);
+                    }
+                }, 120);
+            } catch (err) {
+                console.warn('Web Audio API blocked or not supported:', err);
             }
         },
 

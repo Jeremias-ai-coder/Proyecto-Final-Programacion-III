@@ -56,3 +56,20 @@ if (!function_exists('jsonResponse')) {
         exit;
     }
 }
+
+if (!function_exists('writeLog')) {
+    function writeLog($message, $level = 'ERROR') {
+        try {
+            $logDir = __DIR__ . '/../../logs';
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . '/app.log';
+            $timestamp = date('Y-m-d H:i:s');
+            $formattedMessage = "[$timestamp] [$level] $message" . PHP_EOL;
+            file_put_contents($logFile, $formattedMessage, FILE_APPEND);
+        } catch (\Throwable $e) {
+            // Silenciar fallos al escribir el log
+        }
+    }
+}

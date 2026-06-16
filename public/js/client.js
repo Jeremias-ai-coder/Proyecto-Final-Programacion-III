@@ -23,6 +23,11 @@ const pageBasePath = (function() {
 const apiUrl = pageBasePath + '/api';
 console.info('client.js apiUrl=', apiUrl);
 
+// Variables de estado de paginación (globales para que renderBusinessCards pueda accederlas)
+let businessCurrentPage = 1;
+const businessesPerPage = 9;
+
+
 // 2. FUNCIÓN: CONSULTAR NEGOCIOS A LA API
 async function fetchBusinesses() {
     try {
@@ -83,18 +88,38 @@ function renderBusinessCards(items) {
     if (!grid) return;
     grid.innerHTML = '';
     
+    const paginationContainer = document.getElementById('businessPagination');
+    if (paginationContainer) {
+        paginationContainer.innerHTML = '';
+        paginationContainer.style.display = 'none';
+    }
+    
     if (!items.length) {
         grid.innerHTML = '<div class="col-12"><div class="alert alert-info text-center py-4">No se encontraron negocios dentro del rango seleccionado.</div></div>';
         return;
     }
     
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / businessesPerPage);
+
+    if (businessCurrentPage > totalPages) {
+        businessCurrentPage = totalPages;
+    }
+    if (businessCurrentPage < 1) {
+        businessCurrentPage = 1;
+    }
+
+    const startIndex = (businessCurrentPage - 1) * businessesPerPage;
+    const endIndex = Math.min(startIndex + businessesPerPage, totalItems);
+    const pageItems = items.slice(startIndex, endIndex);
+
     const userId = localStorage.getItem('userId');
     const userRole = localStorage.getItem('userRole');
     
     const userLat = parseFloat(localStorage.getItem('userLat')) || null;
     const userLng = parseFloat(localStorage.getItem('userLng')) || null;
     
-    for (const business of items) {
+    for (const business of pageItems) {
         const card = document.createElement('div');
         card.className = 'col-sm-6 col-md-6 col-lg-4';
         const initials = (business.name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
@@ -146,18 +171,66 @@ function renderBusinessCards(items) {
         `;
         grid.appendChild(card);
     }
+
+    // Renderizar botones de paginación si hay más de 1 página
+    if (totalPages > 1 && paginationContainer) {
+        paginationContainer.style.display = 'flex';
+        
+        // Botón Anterior
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'pagination-btn';
+        prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+        prevBtn.disabled = (businessCurrentPage === 1);
+        prevBtn.addEventListener('click', () => {
+            businessCurrentPage--;
+            renderBusinessCards(items);
+            grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        paginationContainer.appendChild(prevBtn);
+
+        // Números de página
+        for (let p = 1; p <= totalPages; p++) {
+            const pBtn = document.createElement('button');
+            pBtn.type = 'button';
+            pBtn.className = `pagination-btn ${p === businessCurrentPage ? 'active' : ''}`;
+            pBtn.innerText = p;
+            pBtn.addEventListener('click', () => {
+                businessCurrentPage = p;
+                renderBusinessCards(items);
+                grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            paginationContainer.appendChild(pBtn);
+        }
+
+        // Botón Siguiente
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'pagination-btn';
+        nextBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+        nextBtn.disabled = (businessCurrentPage === totalPages);
+        nextBtn.addEventListener('click', () => {
+            businessCurrentPage++;
+            renderBusinessCards(items);
+            grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        paginationContainer.appendChild(nextBtn);
+    }
 }
 
 // Filtro cliente para buscar negocios
 function filterBusinesses(items, query) {
     const userLat = parseFloat(localStorage.getItem('userLat')) || null;
     const userLng = parseFloat(localStorage.getItem('userLng')) || null;
-    const maxDistance = parseInt(localStorage.getItem('maxDistance'), 10) || 25;
+    // Solo aplicar el filtro de cercanía si el usuario lo activó explícitamente
+    const proximityActive = localStorage.getItem('proximityActive') === '1';
+    const storedMaxDistance = localStorage.getItem('maxDistance');
+    const maxDistance = storedMaxDistance !== null ? parseInt(storedMaxDistance, 10) : null;
 
     let filtered = items;
 
-    // 1. Filtrar por cercanía si tenemos ubicación del usuario y la distancia no es 'Cualquiera' (205)
-    if (userLat !== null && userLng !== null && maxDistance <= 200) {
+    // 1. Filtrar por cercanía solo si el toggle está activo y tenemos ubicación y distancia configurada
+    if (proximityActive && userLat !== null && userLng !== null && maxDistance !== null && maxDistance <= 200) {
         filtered = filtered.filter(b => {
             if (b.latitude === null || b.longitude === null) {
                 return false; // Ocultamos negocios sin geolocalización cuando el filtro de cercanía está activo
@@ -166,6 +239,7 @@ function filterBusinesses(items, query) {
             return dist !== null && dist <= maxDistance;
         });
     }
+
 
     // 2. Filtrar por término de búsqueda
     if (query) {
@@ -234,6 +308,9 @@ async function init() {
         bookingDate.min = `${y}-${m}-${d}`;
     }
 
+    let currentCalendarMonth = new Date();
+
+
     let businesses = await fetchBusinesses();
 
     // Notificación flotante rápida si recién creó un negocio
@@ -266,7 +343,7 @@ async function init() {
         if (userProfileSection) userProfileSection.style.display = 'none';
         
         if (sectionId === 'grid') {
-            businessGrid.style.display = 'flex';
+            businessGrid.style.display = ''; // Restaurar display de Bootstrap (.row = flex)
             businessGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else if (sectionId === 'appointments') {
             myAppointmentsSection.style.display = 'block';
@@ -444,11 +521,13 @@ async function init() {
     }
 
     const refreshBusinesses = async () => {
+        businessCurrentPage = 1;
         businesses = await fetchBusinesses();
         renderBusinessCards(filterBusinesses(businesses, businessSearch.value));
     };
 
     businessSearch.addEventListener('input', () => {
+        businessCurrentPage = 1;
         const filtered = filterBusinesses(businesses, businessSearch.value);
         renderBusinessCards(filtered);
     });
@@ -456,6 +535,7 @@ async function init() {
     const btnSearch = document.getElementById('btnSearch');
     if (btnSearch) {
         btnSearch.addEventListener('click', () => {
+            businessCurrentPage = 1;
             const filtered = filterBusinesses(businesses, businessSearch.value);
             renderBusinessCards(filtered);
             businessSearch.focus();
@@ -475,85 +555,120 @@ async function init() {
     const toggleFarBusinesses = document.getElementById('toggleFarBusinesses');
     const toggleFarBusinessesContainer = document.getElementById('toggleFarBusinessesContainer');
 
+    // Nuevo toggle principal de cercanía
+    const toggleProximityFilter = document.getElementById('toggleProximityFilter');
+    const proximityFilterHint = document.getElementById('proximityFilterHint');
+    const distanceSliderWrapper = document.getElementById('distanceSliderWrapper');
+
     // Inicializar controles desde localStorage
     const savedLat = localStorage.getItem('userLat');
     const savedLng = localStorage.getItem('userLng');
     const savedAddress = localStorage.getItem('userAddress');
+
+    // Si no hay ubicación guardada, aseguramos que maxDistance y proximityActive estén limpios
+    if (!savedLat || !savedLng) {
+        localStorage.removeItem('maxDistance');
+        localStorage.removeItem('proximityActive');
+    }
+
+    // Leer si el filtro de cercanía estaba activo
+    const proximityWasActive = localStorage.getItem('proximityActive') === '1';
     const savedDistance = localStorage.getItem('maxDistance') || '25';
 
+    function updateDistanceLabel(val) {
+        const v = parseInt(val, 10);
+        if (v > 200) {
+            if (distanceRangeVal) distanceRangeVal.innerText = 'Todo';
+        } else {
+            if (distanceRangeVal) distanceRangeVal.innerText = `${v} km`;
+        }
+    }
+
+    function updateProximityFilterUI() {
+        const hasLocation = !!(localStorage.getItem('userLat') && localStorage.getItem('userLng'));
+        const isActive = toggleProximityFilter && toggleProximityFilter.checked;
+
+        // Habilitar/deshabilitar toggle según si hay ubicación
+        if (toggleProximityFilter) {
+            toggleProximityFilter.disabled = !hasLocation;
+        }
+
+        // Actualizar hint
+        if (proximityFilterHint) {
+            if (!hasLocation) {
+                proximityFilterHint.textContent = 'Activa tu ubicación primero para usar este filtro.';
+                proximityFilterHint.style.display = 'block';
+            } else if (isActive) {
+                proximityFilterHint.textContent = 'Mostrando solo negocios dentro del rango seleccionado.';
+                proximityFilterHint.style.display = 'block';
+            } else {
+                proximityFilterHint.textContent = 'Activá el filtro para ver solo negocios cercanos.';
+                proximityFilterHint.style.display = 'block';
+            }
+        }
+
+        // Mostrar/ocultar slider
+        if (distanceSliderWrapper) {
+            distanceSliderWrapper.style.display = (hasLocation && isActive) ? 'block' : 'none';
+        }
+
+        // Guardar estado
+        if (toggleProximityFilter) {
+            localStorage.setItem('proximityActive', toggleProximityFilter.checked ? '1' : '0');
+        }
+    }
+
+    // Inicializar toggle con el estado guardado
+    if (toggleProximityFilter) {
+        const hasLocation = !!(savedLat && savedLng);
+        toggleProximityFilter.checked = hasLocation && proximityWasActive;
+        toggleProximityFilter.disabled = !hasLocation;
+
+        toggleProximityFilter.addEventListener('change', () => {
+            if (!toggleProximityFilter.checked) {
+                // Al desactivar, limpiar distancia del filtro
+                localStorage.removeItem('maxDistance');
+            } else {
+                // Al activar con el valor actual del slider
+                const val = distanceRange ? distanceRange.value : '25';
+                localStorage.setItem('maxDistance', val);
+            }
+            updateProximityFilterUI();
+            triggerFiltering();
+        });
+    }
+
+    // Inicializar slider
     if (distanceRange) {
         distanceRange.value = savedDistance;
         updateDistanceLabel(savedDistance);
+
+        distanceRange.addEventListener('input', (e) => {
+            const val = e.target.value;
+            localStorage.setItem('maxDistance', val);
+            updateDistanceLabel(val);
+            triggerFiltering();
+        });
     }
 
-    if (toggleFarBusinesses) {
-        toggleFarBusinesses.checked = (parseInt(savedDistance, 10) > 25);
-    }
-
-    function updateToggleContainerVisibility() {
-        if (toggleFarBusinessesContainer) {
-            const hasLocation = localStorage.getItem('userLat') !== null;
-            toggleFarBusinessesContainer.style.display = hasLocation ? 'block' : 'none';
-        }
-    }
-    updateToggleContainerVisibility();
+    updateProximityFilterUI();
 
     if (savedLat && savedLng && userLocationText) {
         userLocationText.innerHTML = `📍 <strong>${savedAddress || 'Ubicación guardada'}</strong>`;
         if (btnClearLocationFilter) btnClearLocationFilter.style.display = 'block';
     }
 
-    function updateDistanceLabel(val) {
-        const v = parseInt(val, 10);
-        if (v > 200) {
-            if (distanceRangeVal) distanceRangeVal.innerText = 'Cualquiera';
-        } else {
-            if (distanceRangeVal) distanceRangeVal.innerText = `${v} km`;
-        }
-    }
-
     function triggerFiltering() {
+        businessCurrentPage = 1;
         const query = businessSearch ? businessSearch.value : '';
         const filtered = filterBusinesses(businesses, query);
         renderBusinessCards(filtered);
     }
 
-    // Slider de distancia
-    if (distanceRange) {
-        distanceRange.addEventListener('input', (e) => {
-            const val = e.target.value;
-            localStorage.setItem('maxDistance', val);
-            updateDistanceLabel(val);
-
-            // Sincronizar switch
-            if (toggleFarBusinesses) {
-                toggleFarBusinesses.checked = (parseInt(val, 10) > 25);
-            }
-
-            triggerFiltering();
-        });
-    }
-
-    // Switch rápido para mostrar/ocultar lejanos
-    if (toggleFarBusinesses) {
-        toggleFarBusinesses.addEventListener('change', () => {
-            if (toggleFarBusinesses.checked) {
-                // Seleccionar "Cualquiera" (205)
-                localStorage.setItem('maxDistance', '205');
-                if (distanceRange) {
-                    distanceRange.value = '205';
-                    updateDistanceLabel('205');
-                }
-            } else {
-                // Regresar a 25 km
-                localStorage.setItem('maxDistance', '25');
-                if (distanceRange) {
-                    distanceRange.value = '25';
-                    updateDistanceLabel('25');
-                }
-            }
-            triggerFiltering();
-        });
+    // Legado: sincronizar toggleFarBusinesses (ya no visible pero por compatibilidad)
+    function updateToggleContainerVisibility() {
+        // El nuevo toggle de proximidad maneja esto
+        updateProximityFilterUI();
     }
 
     // Geolocalización
@@ -601,7 +716,7 @@ async function init() {
                     btnUseGeolocation.disabled = false;
                     btnUseGeolocation.innerHTML = originalContent;
 
-                    updateToggleContainerVisibility();
+                    updateProximityFilterUI();
                     triggerFiltering();
                 },
                 (error) => {
@@ -657,7 +772,7 @@ async function init() {
                         const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('manualLocationCollapse'));
                         if (bsCollapse) bsCollapse.hide();
 
-                        updateToggleContainerVisibility();
+                        updateProximityFilterUI();
                         triggerFiltering();
                     } else {
                         throw new Error('Dirección no encontrada');
@@ -684,12 +799,19 @@ async function init() {
             localStorage.removeItem('userLat');
             localStorage.removeItem('userLng');
             localStorage.removeItem('userAddress');
+            localStorage.removeItem('maxDistance');
+            localStorage.removeItem('proximityActive');
+
+            // Desactivar el toggle de cercanía
+            if (toggleProximityFilter) {
+                toggleProximityFilter.checked = false;
+            }
 
             if (userLocationText) {
                 userLocationText.innerHTML = 'No se ha detectado tu ubicación actual.';
             }
             btnClearLocationFilter.style.display = 'none';
-            updateToggleContainerVisibility();
+            updateProximityFilterUI();
             triggerFiltering();
         });
     }
@@ -718,6 +840,7 @@ async function init() {
         document.getElementById('panelStep1').style.display = 'none';
         document.getElementById('panelStep2').style.display = 'none';
         document.getElementById('panelStep3').style.display = 'none';
+        document.getElementById('panelStep4').style.display = 'none';
         
         document.getElementById('stepIndicator1').classList.remove('active');
         document.getElementById('stepIndicator2').classList.remove('active');
@@ -734,6 +857,10 @@ async function init() {
             document.getElementById('panelStep3').style.display = 'block';
             document.getElementById('stepIndicator3').classList.add('active');
             populateSummary();
+        } else if (stepNumber === 4) {
+            document.getElementById('panelStep4').style.display = 'block';
+            document.getElementById('stepIndicator3').classList.add('active');
+            populateSuccessSummary();
         }
     }
 
@@ -1021,6 +1148,10 @@ async function init() {
         bookingTime.value = '';
         document.getElementById('timeSlotsContainer').style.display = 'none';
         
+        // Inicializar Calendario
+        currentCalendarMonth = new Date();
+        renderInteractiveCalendar(business);
+
         goToStep(1);
     }
 
@@ -1046,6 +1177,8 @@ async function init() {
         });
     }
 
+    let lastBookedAppointment = null;
+
     // Registrar envío de reservas
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1068,6 +1201,11 @@ async function init() {
             return;
         }
 
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Confirmando...';
+
         try {
             const res = await fetch(`${apiUrl}/appointments`, {
                 method: 'POST', 
@@ -1076,17 +1214,218 @@ async function init() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert('Turno reservado exitosamente.');
+                lastBookedAppointment = {
+                    business_id: body.business_id,
+                    service_id: body.service_id,
+                    date: body.date,
+                    time: body.time
+                };
                 form.reset();
-                showSection('grid');
-                refreshBusinesses();
+                goToStep(4);
             } else {
                 alert('Error al reservar: ' + (data.message || JSON.stringify(data)));
             }
         } catch (error) {
             alert('Error de conexión con el servidor.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         }
     });
+
+    // Finalizar proceso de reserva e ir al inicio
+    const btnFinishBooking = document.getElementById('btnFinishBooking');
+    if (btnFinishBooking) {
+        btnFinishBooking.addEventListener('click', () => {
+            showSection('grid');
+            refreshBusinesses();
+        });
+    }
+
+    // Función para renderizar el calendario interactivo
+    function renderInteractiveCalendar(business) {
+        const calendarContainer = document.getElementById('inlineCalendarContainer');
+        if (!calendarContainer) return;
+
+        calendarContainer.innerHTML = '';
+
+        const year = currentCalendarMonth.getFullYear();
+        const month = currentCalendarMonth.getMonth();
+
+        const header = document.createElement('div');
+        header.className = 'calendar-header';
+        
+        const monthNames = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+
+        const today = new Date();
+        const isCurrentMonth = (year === today.getFullYear() && month === today.getMonth());
+
+        header.innerHTML = `
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-prev-month" ${isCurrentMonth ? 'disabled' : ''}>
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <h6 class="fw-bold mb-0 text-dark">${monthNames[month]} ${year}</h6>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-next-month">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        `;
+
+        calendarContainer.appendChild(header);
+
+        const dayNamesRow = document.createElement('div');
+        dayNamesRow.className = 'calendar-days-grid mb-1';
+        const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        for (const label of dayLabels) {
+            const el = document.createElement('div');
+            el.className = 'calendar-day-name';
+            el.innerText = label;
+            dayNamesRow.appendChild(el);
+        }
+        calendarContainer.appendChild(dayNamesRow);
+
+        const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        const openDaysOfWeek = new Set();
+        const schedules = business.work_schedules || business.workSchedules || [];
+        for (const sched of schedules) {
+            openDaysOfWeek.add(parseInt(sched.day_of_week, 10));
+        }
+
+        const daysGrid = document.createElement('div');
+        daysGrid.className = 'calendar-days-grid';
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyCell = document.createElement('div');
+            daysGrid.appendChild(emptyCell);
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'calendar-day-btn';
+            btn.innerText = d;
+
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            btn.dataset.date = dateStr;
+
+            const dateObj = new Date(year, month, d);
+            const dayOfWeek = dateObj.getDay() === 0 ? 7 : dateObj.getDay();
+            const todayLocalStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            if (dateStr < todayLocalStr) {
+                btn.disabled = true;
+            } else {
+                if (openDaysOfWeek.has(dayOfWeek)) {
+                    btn.classList.add('enabled-day-of-week');
+                } else {
+                    btn.classList.add('disabled-day-of-week');
+                    btn.disabled = true;
+                    btn.title = 'Cerrado';
+                }
+            }
+
+            if (dateStr === todayLocalStr) {
+                btn.classList.add('today-day');
+            }
+
+            if (bookingDate.value === dateStr) {
+                btn.classList.add('active-day');
+            }
+
+            btn.addEventListener('click', () => {
+                daysGrid.querySelectorAll('.calendar-day-btn').forEach(b => b.classList.remove('active-day'));
+                btn.classList.add('active-day');
+                bookingDate.value = dateStr;
+                refreshAvailableSlots();
+            });
+
+            daysGrid.appendChild(btn);
+        }
+
+        calendarContainer.appendChild(daysGrid);
+
+        header.querySelector('.btn-prev-month').addEventListener('click', () => {
+            currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
+            renderInteractiveCalendar(business);
+        });
+
+        header.querySelector('.btn-next-month').addEventListener('click', () => {
+            currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
+            renderInteractiveCalendar(business);
+        });
+    }
+
+    // Rellenar el Paso 4 (pantalla de éxito y calendario)
+    function populateSuccessSummary() {
+        if (!lastBookedAppointment) return;
+
+        const biz = businesses.find(b => b.id === parseInt(lastBookedAppointment.business_id, 10));
+        const services = selectService.services || [];
+        const srv = services.find(s => s.id === parseInt(lastBookedAppointment.service_id, 10));
+
+        const bizName = biz ? biz.name : 'Negocio';
+        const srvName = srv ? srv.name : 'Servicio';
+        
+        document.getElementById('successBusinessName').innerText = bizName;
+        document.getElementById('successServiceName').innerText = srvName;
+
+        const dateParts = lastBookedAppointment.date.split('-');
+        const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : lastBookedAppointment.date;
+        const formattedTime = lastBookedAppointment.time.substring(0, 5);
+
+        document.getElementById('successDateTime').innerText = `${formattedDate} a las ${formattedTime} hs`;
+
+        // Generar enlace de Google Calendar
+        const startDateTimeStr = `${lastBookedAppointment.date.replace(/-/g, '')}T${formattedTime.replace(/:/g, '')}00`;
+        const duration = srv ? parseInt(srv.duration_minutes, 10) : 30;
+        
+        // Calcular hora de fin
+        const [h, m] = formattedTime.split(':').map(Number);
+        const endMinutes = h * 60 + m + duration;
+        const endH = Math.floor(endMinutes / 60);
+        const endM = endMinutes % 60;
+        const endDateStr = lastBookedAppointment.date.replace(/-/g, '');
+        const endDateTimeStr = `${endDateStr}T${String(endH).padStart(2, '0')}${String(endM).padStart(2, '0')}00`;
+
+        const details = encodeURIComponent(`Servicio: ${srvName}\nPrecio: $${srv ? srv.price : '0.00'}`);
+        const location = encodeURIComponent(biz && biz.address ? biz.address : '');
+        const title = encodeURIComponent(`Turno en ${bizName}`);
+
+        const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateTimeStr}/${endDateTimeStr}&details=${details}&location=${location}`;
+        document.getElementById('btnGoogleCalendar').href = gCalUrl;
+
+        // Configurar botón descargar .ics
+        const btnIcs = document.getElementById('btnDownloadIcs');
+        btnIcs.onclick = () => {
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//TurnosYa//NONSGML v1.0//ES',
+                'BEGIN:VEVENT',
+                `SUMMARY:Turno en ${bizName}`,
+                `DESCRIPTION:Servicio: ${srvName}`,
+                `LOCATION:${biz && biz.address ? biz.address : ''}`,
+                `DTSTART:${startDateTimeStr}`,
+                `DTEND:${endDateTimeStr}`,
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\r\n');
+
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `turno-${bizName.toLowerCase().replace(/\s+/g, '-')}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+    }
 
     // 7. CARGAR Y RENDERIZAR HISTORIAL DE CITAS DE CLIENTE
     async function refreshMyAppointmentsList() {
@@ -1172,6 +1511,23 @@ async function init() {
                         ? `<img src="${appt.business.logo_url}" class="rounded-circle shadow-sm" style="width: 40px; height: 40px; object-fit: cover; border: 1px solid #e2e8f0;" alt="${bizName}" onerror="this.outerHTML='<div class=&quot;user-avatar-circle-nav bg-light-primary&quot; style=&quot;width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #009ee3; background-color: #f0f7ff; border: 1px solid #e2e8f0;&quot;>${initials}</div>'">`
                         : `<div class="user-avatar-circle-nav" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #009ee3; background-color: #f0f7ff; border: 1px solid #e2e8f0;">${initials || 'TY'}</div>`;
 
+                    // Generar enlace de Google Calendar
+                    const startDateTimeStr = `${rawDate.replace(/-/g, '')}T${formattedTime.replace(/:/g, '')}00`;
+                    const duration = appt.service ? parseInt(appt.service.duration_minutes, 10) : 30;
+                    
+                    const [h, m] = formattedTime.split(':').map(Number);
+                    const endMinutes = h * 60 + m + duration;
+                    const endH = Math.floor(endMinutes / 60);
+                    const endM = endMinutes % 60;
+                    const endDateStr = rawDate.replace(/-/g, '');
+                    const endDateTimeStr = `${endDateStr}T${String(endH).padStart(2, '0')}${String(endM).padStart(2, '0')}00`;
+
+                    const details = encodeURIComponent(`Servicio: ${serviceName}\nPrecio: $${price}`);
+                    const locationVal = encodeURIComponent(appt.business && appt.business.address ? appt.business.address : '');
+                    const titleVal = encodeURIComponent(`Turno en ${bizName}`);
+
+                    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titleVal}&dates=${startDateTimeStr}/${endDateTimeStr}&details=${details}&location=${locationVal}`;
+
                     card.innerHTML = `
                         <div class="ticket-card h-100">
                             <div class="ticket-body">
@@ -1185,7 +1541,17 @@ async function init() {
                                 <div class="mb-2">
                                     <div class="text-secondary fw-semibold" style="font-size: 0.85rem;">Servicio</div>
                                     <div class="text-dark fw-bold text-truncate" style="font-size: 0.95rem;" title="${serviceName}">${serviceName}</div>
-                                    <div class="text-primary fw-bold" style="font-size: 0.9rem;">$${parseFloat(price).toFixed(2)}</div>
+                                    <div class="text-primary fw-bold mb-2" style="font-size: 0.9rem;">$${parseFloat(price).toFixed(2)}</div>
+                                    
+                                    <!-- Botones de Calendario -->
+                                    <div class="d-flex gap-1 mb-2">
+                                        <a href="${gCalUrl}" target="_blank" class="btn btn-outline-primary btn-xs py-1 px-2 fw-semibold" style="font-size: 0.72rem; border-radius: 6px;" title="Añadir a Google Calendar">
+                                            <i class="bi bi-google"></i> Google Cal
+                                        </a>
+                                        <button type="button" class="btn btn-outline-secondary btn-xs py-1 px-2 fw-semibold btn-download-ics-appt" data-biz-name="${bizName}" data-srv-name="${serviceName}" data-date="${rawDate}" data-time="${formattedTime}" data-duration="${duration}" data-address="${appt.business && appt.business.address ? appt.business.address : ''}" style="font-size: 0.72rem; border-radius: 6px;" title="Descargar archivo .ics">
+                                            <i class="bi bi-calendar-event"></i> .ics
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="mt-auto bg-light p-2 rounded border border-light-subtle d-flex justify-content-between align-items-center">
                                     <div>
@@ -1209,6 +1575,50 @@ async function init() {
                         </div>
                     `;
                     if (appointmentsList) appointmentsList.appendChild(card);
+                });
+
+                // Vincular click de descarga de ICS en la lista
+                appointmentsList.querySelectorAll('.btn-download-ics-appt').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const biz = btn.dataset.bizName;
+                        const srv = btn.dataset.srvName;
+                        const dStr = btn.dataset.date;
+                        const tStr = btn.dataset.time;
+                        const dur = parseInt(btn.dataset.duration, 10) || 30;
+                        const addr = btn.dataset.address;
+
+                        const startIcsStr = `${dStr.replace(/-/g, '')}T${tStr.replace(/:/g, '')}00`;
+                        const [th, tm] = tStr.split(':').map(Number);
+                        const tEndMinutes = th * 60 + tm + dur;
+                        const teH = Math.floor(tEndMinutes / 60);
+                        const teM = tEndMinutes % 60;
+                        const endIcsStr = `${dStr.replace(/-/g, '')}T${String(teH).padStart(2, '0')}${String(teM).padStart(2, '0')}00`;
+
+                        const icsContent = [
+                            'BEGIN:VCALENDAR',
+                            'VERSION:2.0',
+                            'PRODID:-//TurnosYa//NONSGML v1.0//ES',
+                            'BEGIN:VEVENT',
+                            `SUMMARY:Turno en ${biz}`,
+                            `DESCRIPTION:Servicio: ${srv}`,
+                            `LOCATION:${addr}`,
+                            `DTSTART:${startIcsStr}`,
+                            `DTEND:${endIcsStr}`,
+                            'END:VEVENT',
+                            'END:VCALENDAR'
+                        ].join('\r\n');
+
+                        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `turno-${biz.toLowerCase().replace(/\s+/g, '-')}.ics`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    });
                 });
             }
 

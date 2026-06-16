@@ -19,6 +19,22 @@ class BusinessController
                     $ownerId = sanitizeInt($_GET['owner_id']);
                     $query->where('owner_id', $ownerId);
                 }
+
+                $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : null;
+                $limit = isset($_GET['limit']) ? max(1, intval($_GET['limit'])) : null;
+                
+                if ($limit !== null) {
+                    $page = $page ?? 1;
+                    $offset = ($page - 1) * $limit;
+                    $total = $query->count();
+                    header('X-Total-Count: ' . $total);
+                    header('X-Total-Pages: ' . ($limit > 0 ? ceil($total / $limit) : 1));
+                    header('X-Current-Page: ' . $page);
+                    header('X-Per-Page: ' . $limit);
+                    
+                    $query->skip($offset)->take($limit);
+                }
+
                 $businesses = $query->get();
                 jsonResponse($businesses);
             }
@@ -42,20 +58,10 @@ class BusinessController
                 }
 
                 if (($latitude === null || $longitude === null) && $address !== '') {
-                    $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
-                    $opts = [
-                        'http' => [
-                            'header' => "User-Agent: TurnosYa-App/1.0\r\n"
-                        ]
-                    ];
-                    $context = stream_context_create($opts);
-                    $response = @file_get_contents($url, false, $context);
-                    if ($response) {
-                        $data = json_decode($response, true);
-                        if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
-                            $latitude = floatval($data[0]['lat']);
-                            $longitude = floatval($data[0]['lon']);
-                        }
+                    $coords = $this->getGeocodingCoordinates($address);
+                    if ($coords) {
+                        $latitude = $coords['latitude'];
+                        $longitude = $coords['longitude'];
                     }
                 }
 
@@ -63,26 +69,31 @@ class BusinessController
                     jsonResponse(['message' => 'La dirección ingresada no existe o no se pudo validar.'], 400);
                 }
 
-                $business = Business::create([
-                    'name' => $name,
-                    'description' => $description,
-                    'address' => $address !== '' ? $address : null,
-                    'logo_url' => $logoUrl !== '' ? $logoUrl : null,
-                    'owner_id' => $ownerId,
-                    'latitude' => $latitude,
-                    'longitude' => $longitude,
-                ]);
+                try {
+                    $business = Business::create([
+                        'name' => $name,
+                        'description' => $description,
+                        'address' => $address !== '' ? $address : null,
+                        'logo_url' => $logoUrl !== '' ? $logoUrl : null,
+                        'owner_id' => $ownerId,
+                        'latitude' => $latitude,
+                        'longitude' => $longitude,
+                    ]);
 
-                $ownerUser = User::find($ownerId);
-                if ($ownerUser && $ownerUser->role === 'client') {
-                    $ownerUser->role = 'owner';
-                    $ownerUser->save();
-                    if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $ownerId) {
-                        $_SESSION['user_role'] = 'owner';
+                    $ownerUser = User::find($ownerId);
+                    if ($ownerUser && $ownerUser->role === 'client') {
+                        $ownerUser->role = 'owner';
+                        $ownerUser->save();
+                        if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $ownerId) {
+                            $_SESSION['user_role'] = 'owner';
+                        }
                     }
-                }
 
-                jsonResponse($business, 201);
+                    jsonResponse($business, 201);
+                } catch (\Throwable $e) {
+                    writeLog("Error al registrar negocio: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+                    jsonResponse(['message' => 'Error interno al registrar el negocio.'], 500);
+                }
             }
 
             if ($method === 'PUT') {
@@ -114,20 +125,10 @@ class BusinessController
                 }
 
                 if (($latitude === null || $longitude === null) && $address !== '') {
-                    $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
-                    $opts = [
-                        'http' => [
-                            'header' => "User-Agent: TurnosYa-App/1.0\r\n"
-                        ]
-                    ];
-                    $context = stream_context_create($opts);
-                    $response = @file_get_contents($url, false, $context);
-                    if ($response) {
-                        $data = json_decode($response, true);
-                        if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
-                            $latitude = floatval($data[0]['lat']);
-                            $longitude = floatval($data[0]['lon']);
-                        }
+                    $coords = $this->getGeocodingCoordinates($address);
+                    if ($coords) {
+                        $latitude = $coords['latitude'];
+                        $longitude = $coords['longitude'];
                     }
                 }
 
@@ -135,16 +136,21 @@ class BusinessController
                     jsonResponse(['message' => 'La dirección ingresada no existe o no se pudo validar.'], 400);
                 }
 
-                $business->update([
-                    'name' => $name,
-                    'description' => $description,
-                    'address' => $address !== '' ? $address : null,
-                    'logo_url' => $logoUrl !== '' ? $logoUrl : null,
-                    'latitude' => $latitude,
-                    'longitude' => $longitude,
-                ]);
+                try {
+                    $business->update([
+                        'name' => $name,
+                        'description' => $description,
+                        'address' => $address !== '' ? $address : null,
+                        'logo_url' => $logoUrl !== '' ? $logoUrl : null,
+                        'latitude' => $latitude,
+                        'longitude' => $longitude,
+                    ]);
 
-                jsonResponse($business);
+                    jsonResponse($business);
+                } catch (\Throwable $e) {
+                    writeLog("Error al actualizar negocio (ID $id): " . $e->getMessage() . "\n" . $e->getTraceAsString());
+                    jsonResponse(['message' => 'Error interno al actualizar el negocio.'], 500);
+                }
             }
 
             if ($method === 'DELETE') {
@@ -216,20 +222,10 @@ class BusinessController
                 }
 
                 if (($latitude === null || $longitude === null) && $address !== '') {
-                    $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
-                    $opts = [
-                        'http' => [
-                            'header' => "User-Agent: TurnosYa-App/1.0\r\n"
-                        ]
-                    ];
-                    $context = stream_context_create($opts);
-                    $response = @file_get_contents($url, false, $context);
-                    if ($response) {
-                        $data = json_decode($response, true);
-                        if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
-                            $latitude = floatval($data[0]['lat']);
-                            $longitude = floatval($data[0]['lon']);
-                        }
+                    $coords = $this->getGeocodingCoordinates($address);
+                    if ($coords) {
+                        $latitude = $coords['latitude'];
+                        $longitude = $coords['longitude'];
                     }
                 }
 
@@ -237,37 +233,98 @@ class BusinessController
                     jsonResponse(['message' => 'La dirección ingresada no existe o no se pudo validar.'], 400);
                 }
 
-                $business = Business::create([
-                    'name' => $name,
-                    'description' => $description,
-                    'address' => $address !== '' ? $address : null,
-                    'logo_url' => $logoUrl !== '' ? $logoUrl : null,
-                    'owner_id' => $ownerId,
-                    'latitude' => $latitude,
-                    'longitude' => $longitude,
-                ]);
+                try {
+                    $business = \Illuminate\Database\Capsule\Manager::transaction(function() use ($name, $description, $address, $logoUrl, $ownerId, $latitude, $longitude, $startDay, $endDay, $startTime, $endTime) {
+                        $business = Business::create([
+                            'name' => $name,
+                            'description' => $description,
+                            'address' => $address !== '' ? $address : null,
+                            'logo_url' => $logoUrl !== '' ? $logoUrl : null,
+                            'owner_id' => $ownerId,
+                            'latitude' => $latitude,
+                            'longitude' => $longitude,
+                        ]);
 
-                for ($day = $startDay; $day <= $endDay; $day++) {
-                    WorkSchedule::create([
-                        'business_id' => $business->id,
-                        'day_of_week' => $day,
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
-                    ]);
+                        for ($day = $startDay; $day <= $endDay; $day++) {
+                            WorkSchedule::create([
+                                'business_id' => $business->id,
+                                'day_of_week' => $day,
+                                'start_time' => $startTime,
+                                'end_time' => $endTime,
+                            ]);
+                        }
+
+                        $ownerUser = User::find($ownerId);
+                        if ($ownerUser && $ownerUser->role === 'client') {
+                            $ownerUser->role = 'owner';
+                            $ownerUser->save();
+                            if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $ownerId) {
+                                $_SESSION['user_role'] = 'owner';
+                            }
+                        }
+
+                        return $business;
+                    });
+
+                    $business->load(['owner', 'services', 'workSchedules']);
+                    jsonResponse($business, 201);
+                } catch (\Throwable $e) {
+                    writeLog("Error en transacción de negocio con horario: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+                    jsonResponse(['message' => 'Error interno al registrar el negocio y sus horarios.'], 500);
                 }
-
-                $ownerUser = User::find($ownerId);
-                if ($ownerUser && $ownerUser->role === 'client') {
-                    $ownerUser->role = 'owner';
-                    $ownerUser->save();
-                    if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $ownerId) {
-                        $_SESSION['user_role'] = 'owner';
-                    }
-                }
-
-                $business->load(['owner', 'services', 'workSchedules']);
-                jsonResponse($business, 201);
             }
         }
+    }
+
+    private function getGeocodingCoordinates($address)
+    {
+        if ($address === '') {
+            return null;
+        }
+
+        try {
+            $cached = \App\Models\AddressCache::where('address', $address)->first();
+            if ($cached) {
+                return [
+                    'latitude' => floatval($cached->latitude),
+                    'longitude' => floatval($cached->longitude)
+                ];
+            }
+        } catch (\Throwable $dbEx) {
+            writeLog("Error al buscar en address_cache: " . $dbEx->getMessage());
+        }
+
+        $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
+        $opts = [
+            'http' => [
+                'header' => "User-Agent: TurnosYa-App/1.0\r\n"
+            ]
+        ];
+        $context = stream_context_create($opts);
+        $response = @file_get_contents($url, false, $context);
+        if ($response) {
+            $data = json_decode($response, true);
+            if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
+                $latitude = floatval($data[0]['lat']);
+                $longitude = floatval($data[0]['lon']);
+
+                try {
+                    \App\Models\AddressCache::create([
+                        'address' => $address,
+                        'latitude' => $latitude,
+                        'longitude' => $longitude
+                    ]);
+                } catch (\Throwable $cacheEx) {
+                    writeLog("Error al guardar en address_cache: " . $cacheEx->getMessage());
+                }
+
+                return [
+                    'latitude' => $latitude,
+                    'longitude' => $longitude
+                ];
+            }
+        }
+
+        return null;
     }
 }

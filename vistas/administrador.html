@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { 
             background-color: #f5f8fa; 
@@ -286,9 +287,14 @@
                         <label class="form-label">Descripción</label>
                         <textarea name="businessDescription" class="form-control" placeholder="Descripción breve..." rows="2" style="resize: none;"></textarea>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3 position-relative">
                         <label class="form-label">Dirección comercial</label>
-                        <input type="text" name="businessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA">
+                        <input type="text" id="firstBusinessAddress" name="businessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA" autocomplete="off">
+                        <div id="firstAddressSuggestions" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1000; max-height: 150px; overflow-y: auto;"></div>
+                    </div>
+                    <div id="firstMapContainer" class="mb-3 d-none">
+                        <label class="form-label text-muted small">Ubicación sugerida (puedes arrastrar el pin):</label>
+                        <div id="firstMap" style="height: 180px; border-radius: 8px; border: 1px solid #cbd5e1;"></div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Enlace del Logo (URL)</label>
@@ -550,10 +556,15 @@
                                             <label class="form-label" for="editBusinessName">Nombre del negocio</label>
                                             <input type="text" id="editBusinessName" name="editBusinessName" class="form-control" placeholder="Ej. Barbería Central" required>
                                         </div>
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-6 mb-3 position-relative">
                                             <label class="form-label" for="editBusinessAddress">Dirección comercial</label>
-                                            <input type="text" id="editBusinessAddress" name="editBusinessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA">
+                                            <input type="text" id="editBusinessAddress" name="editBusinessAddress" class="form-control" placeholder="Ej. Av. de Mayo 1234, CABA" autocomplete="off">
+                                            <div id="editAddressSuggestions" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1000; max-height: 150px; overflow-y: auto;"></div>
                                         </div>
+                                    </div>
+                                    <div id="editMapContainer" class="mb-3 d-none">
+                                        <label class="form-label text-muted small">Ubicación sugerida (puedes arrastrar el pin):</label>
+                                        <div id="editMap" style="height: 180px; border-radius: 8px; border: 1px solid #cbd5e1;"></div>
                                     </div>
                                     
                                     <div class="mb-4">
@@ -606,9 +617,14 @@
                             <label class="form-label">Descripción</label>
                             <textarea name="businessDescription" class="form-control" placeholder="Descripción breve de los servicios..." rows="2" style="resize: none;"></textarea>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3 position-relative">
                             <label class="form-label">Dirección comercial</label>
-                            <input type="text" name="businessAddress" class="form-control" placeholder="Ej. Av. Cabildo 2345, CABA">
+                            <input type="text" id="modalBusinessAddress" name="businessAddress" class="form-control" placeholder="Ej. Av. Cabildo 2345, CABA" autocomplete="off">
+                            <div id="modalAddressSuggestions" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1000; max-height: 150px; overflow-y: auto;"></div>
+                        </div>
+                        <div id="modalMapContainer" class="mb-3 d-none">
+                            <label class="form-label text-muted small">Ubicación sugerida (puedes arrastrar el pin):</label>
+                            <div id="modalMap" style="height: 180px; border-radius: 8px; border: 1px solid #cbd5e1;"></div>
                         </div>
                         <div class="mb-4">
                             <label class="form-label">Enlace del Logo (URL)</label>
@@ -652,11 +668,16 @@
             notifEl.defer = true;
             document.body.appendChild(notifEl);
 
-            // Cargar dinámicamente el archivo JS del dashboard
-            const scriptEl = document.createElement('script');
-            scriptEl.src = pageBasePath + '/js/dashboard.js?v=' + Date.now();
-            scriptEl.defer = true;
-            document.body.appendChild(scriptEl);
+            // Cargar Leaflet JS y luego el archivo JS del dashboard
+            const leafletScript = document.createElement('script');
+            leafletScript.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+            leafletScript.onload = () => {
+                const scriptEl = document.createElement('script');
+                scriptEl.src = pageBasePath + '/js/dashboard.js?v=' + Date.now();
+                scriptEl.defer = true;
+                document.body.appendChild(scriptEl);
+            };
+            document.body.appendChild(leafletScript);
 
             // Corrige los destinos de los enlaces absolutos dinámicamente
             if (pageBasePath) {

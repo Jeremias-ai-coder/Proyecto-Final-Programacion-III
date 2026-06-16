@@ -41,7 +41,7 @@ class Mailer
     /**
      * Envía un correo con fallback a log si falla o no está configurado.
      */
-    private static function sendEmail($to, $toName, $subject, $htmlContent)
+    public static function sendEmail($to, $toName, $subject, $htmlContent)
     {
         $mail = self::getMailerInstance();
         if ($mail) {
@@ -125,7 +125,7 @@ class Mailer
                 <p>Si necesitas realizar algún cambio o cancelar la cita, por favor hazlo desde la aplicación con al menos 24 horas de anticipación.</p>
             ");
 
-            self::sendEmail($client->email, $client->name, $subject, $html);
+            self::queueEmail($client->email, $client->name, $subject, $html);
         } catch (\Throwable $e) {
             // Silenciar errores para evitar romper flujo principal
         }
@@ -166,7 +166,7 @@ class Mailer
                 <p>Lamentamos las molestias ocasionadas. Si lo deseas, puedes volver a agendar un nuevo turno ingresando a nuestra plataforma.</p>
             ");
 
-            self::sendEmail($client->email, $client->name, $subject, $html);
+            self::queueEmail($client->email, $client->name, $subject, $html);
         } catch (\Throwable $e) {
             // Silenciar
         }
@@ -212,5 +212,50 @@ class Mailer
         </body>
         </html>
         ";
+    }
+
+    /**
+     * Encola el correo electrónico en la base de datos y dispara el ejecutor.
+     */
+    private static function queueEmail($to, $toName, $subject, $htmlContent)
+    {
+        try {
+            \App\Models\MailQueue::create([
+                'recipient_email' => $to,
+                'recipient_name' => $toName,
+                'subject' => $subject,
+                'body' => $htmlContent,
+                'status' => 'pending',
+                'attempts' => 0
+            ]);
+
+            self::triggerQueueProcessor();
+            return true;
+        } catch (\Throwable $e) {
+            self::logEmailFallback("Fallo al encolar correo: " . $e->getMessage(), $to, $subject, $htmlContent);
+            return false;
+        }
+    }
+
+    /**
+     * Ejecuta el procesador de cola en segundo plano (asíncronamente).
+     */
+    public static function triggerQueueProcessor()
+    {
+        try {
+            $scriptPath = realpath(__DIR__ . '/../cron/process_mail_queue.php');
+            if ($scriptPath) {
+                $phpPath = 'C:\\xampp\\php\\php.exe';
+                if (!file_exists($phpPath)) {
+                    $phpPath = 'php';
+                }
+                
+                // Ejecución en segundo plano silencioso en Windows
+                $cmd = "start /B " . escapeshellcmd($phpPath) . " " . escapeshellarg($scriptPath);
+                pclose(popen($cmd, "r"));
+            }
+        } catch (\Throwable $e) {
+            // Silenciar
+        }
     }
 }

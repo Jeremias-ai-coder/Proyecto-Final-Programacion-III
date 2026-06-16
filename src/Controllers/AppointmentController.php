@@ -36,11 +36,28 @@ class AppointmentController
                     $appt->save();
                 }
             }
-            $appointments = Appointment::with(['business', 'service', 'review'])
+            $query = Appointment::with(['business', 'service', 'review'])
                 ->where('user_id', $userId)
                 ->orderBy('date', 'asc')
-                ->orderBy('time', 'asc')
-                ->get();
+                ->orderBy('time', 'asc');
+
+            $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : null;
+            $limit = isset($_GET['limit']) ? max(1, intval($_GET['limit'])) : null;
+
+            if ($limit !== null) {
+                $page = $page ?? 1;
+                $offset = ($page - 1) * $limit;
+                
+                $total = $query->count();
+                header('X-Total-Count: ' . $total);
+                header('X-Total-Pages: ' . ($limit > 0 ? ceil($total / $limit) : 1));
+                header('X-Current-Page: ' . $page);
+                header('X-Per-Page: ' . $limit);
+                
+                $query->skip($offset)->take($limit);
+            }
+
+            $appointments = $query->get();
             jsonResponse($appointments);
         }
 

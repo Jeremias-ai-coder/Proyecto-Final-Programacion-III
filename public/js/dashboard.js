@@ -33,6 +33,12 @@ let businesses = [];
 let currentBusinessId = null;
 let currentDate = new Date().toISOString().slice(0, 10);
 
+// Coordenadas seleccionadas para los mapas en el Dashboard
+let selectedFirstCoords = { latitude: null, longitude: null };
+let selectedEditCoords = { latitude: null, longitude: null };
+let selectedModalCoords = { latitude: null, longitude: null };
+let activeMaps = {};
+
 // Elementos del DOM
 const welcomeUser = document.getElementById('welcomeUser');
 const roleBadge = document.getElementById('roleBadge');
@@ -108,10 +114,44 @@ async function initDashboard() {
         roleBadge.className = userRole === 'owner' ? 'badge bg-success mt-1 fs-6 px-3 py-2' : 'badge bg-dark mt-1 fs-6 px-3 py-2';
     }
 
-    // B. Cargar negocios
+    // B. Inicializar autocompletados con mapa
+    setupAutocompleteMap({
+        inputId: 'firstBusinessAddress',
+        suggestionsId: 'firstAddressSuggestions',
+        containerId: 'firstMapContainer',
+        mapId: 'firstMap',
+        onCoordsChange: (lat, lon) => {
+            selectedFirstCoords.latitude = lat;
+            selectedFirstCoords.longitude = lon;
+        }
+    });
+
+    setupAutocompleteMap({
+        inputId: 'editBusinessAddress',
+        suggestionsId: 'editAddressSuggestions',
+        containerId: 'editMapContainer',
+        mapId: 'editMap',
+        onCoordsChange: (lat, lon) => {
+            selectedEditCoords.latitude = lat;
+            selectedEditCoords.longitude = lon;
+        }
+    });
+
+    setupAutocompleteMap({
+        inputId: 'modalBusinessAddress',
+        suggestionsId: 'modalAddressSuggestions',
+        containerId: 'modalMapContainer',
+        mapId: 'modalMap',
+        onCoordsChange: (lat, lon) => {
+            selectedModalCoords.latitude = lat;
+            selectedModalCoords.longitude = lon;
+        }
+    });
+
+    // C. Cargar negocios
     await refreshBusinessesList();
 
-    // C. Vincular Cierre de Sesión
+    // D. Vincular Cierre de Sesión
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
@@ -125,7 +165,7 @@ async function initDashboard() {
         });
     }
 
-    // D. Vincular Navegador de Agenda por Fechas
+    // E. Vincular Navegador de Agenda por Fechas
     if (agendaDateInput) {
         agendaDateInput.value = currentDate;
         agendaDateInput.addEventListener('change', (e) => {
@@ -140,7 +180,7 @@ async function initDashboard() {
         btnNextDay.addEventListener('click', () => changeDate(1));
     }
 
-    // E. Vincular Envío de Formularios
+    // F. Vincular Envío de Formularios
     setupFormSubmits();
 }
 
@@ -238,6 +278,19 @@ function switchBusiness(businessId) {
         updateLogoPreview(biz.logo_url, biz.name);
     }
 
+    // Cargar mapa de edición si el negocio tiene coordenadas
+    const editMapContainer = document.getElementById('editMapContainer');
+    if (biz.latitude && biz.longitude) {
+        selectedEditCoords = { latitude: parseFloat(biz.latitude), longitude: parseFloat(biz.longitude) };
+        showMapOnContainer(editMapContainer, 'editMap', selectedEditCoords.latitude, selectedEditCoords.longitude, (lat, lon) => {
+            selectedEditCoords.latitude = lat;
+            selectedEditCoords.longitude = lon;
+        });
+    } else {
+        selectedEditCoords = { latitude: null, longitude: null };
+        if (editMapContainer) editMapContainer.classList.add('d-none');
+    }
+
     // Actualizar métricas fijas
     if (metricActiveServices) {
         metricActiveServices.innerText = biz.services ? biz.services.length : 0;
@@ -270,6 +323,106 @@ function updateLogoPreview(url, name) {
         logoPreviewPlaceholder.innerText = initials || 'TY';
         logoPreviewPlaceholder.style.display = 'flex';
     }
+}
+
+// Helper para configurar autocompletado y mapa interactivo
+function setupAutocompleteMap(config) {
+    const input = document.getElementById(config.inputId);
+    const suggestions = document.getElementById(config.suggestionsId);
+    const container = document.getElementById(config.containerId);
+    const mapId = config.mapId;
+
+    if (!input || !suggestions) return;
+
+    let debounceTimer;
+    input.addEventListener('input', function() {
+        const query = input.value.trim();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            if (query.length < 3) {
+                suggestions.innerHTML = '';
+                suggestions.classList.add('d-none');
+                return;
+            }
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`);
+                if (!res.ok) return;
+                const data = await res.json();
+                suggestions.innerHTML = '';
+                if (data && data.length > 0) {
+                    suggestions.classList.remove('d-none');
+                    data.forEach(item => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'list-group-item list-group-item-action py-2 small';
+                        btn.style.cursor = 'pointer';
+                        btn.style.textAlign = 'left';
+                        btn.textContent = item.display_name;
+                        btn.addEventListener('click', () => {
+                            input.value = item.display_name;
+                            suggestions.innerHTML = '';
+                            suggestions.classList.add('d-none');
+                            
+                            const lat = parseFloat(item.lat);
+                            const lon = parseFloat(item.lon);
+                            
+                            config.onCoordsChange(lat, lon);
+                            showMapOnContainer(container, mapId, lat, lon, config.onCoordsChange);
+                        });
+                        suggestions.appendChild(btn);
+                    });
+                } else {
+                    suggestions.classList.add('d-none');
+                }
+            } catch (e) {
+                console.warn('Autocomplete fetch failed', e);
+            }
+        }, 400);
+    });
+
+    // Cerrar sugerencias si hace clic fuera
+    document.addEventListener('click', function(e) {
+        if (e.target !== input && e.target !== suggestions) {
+            suggestions.innerHTML = '';
+            suggestions.classList.add('d-none');
+        }
+    });
+}
+
+function showMapOnContainer(container, mapId, lat, lon, onCoordsChange) {
+    if (!container || typeof L === 'undefined') return;
+    container.classList.remove('d-none');
+
+    let map = activeMaps[mapId];
+    if (map) {
+        map.setView([lat, lon], 15);
+        if (map._marker) {
+            map._marker.setLatLng([lat, lon]);
+        } else {
+            const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+            map._marker = marker;
+            marker.on('dragend', function(e) {
+                const newLatLng = e.target.getLatLng();
+                onCoordsChange(newLatLng.lat, newLatLng.lng);
+            });
+        }
+    } else {
+        map = L.map(mapId).setView([lat, lon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+        map._marker = marker;
+        marker.on('dragend', function(e) {
+            const newLatLng = e.target.getLatLng();
+            onCoordsChange(newLatLng.lat, newLatLng.lng);
+        });
+
+        activeMaps[mapId] = map;
+    }
+
+    setTimeout(() => { map.invalidateSize(); }, 200);
 }
 
 // 9. RENDERIZAR TABLA DE SERVICIOS
@@ -595,19 +748,28 @@ function setupFormSubmits() {
         editBusinessForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = editBusinessForm.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
+            const originalText = submitBtn ? submitBtn.textContent : 'Guardar cambios';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Validando dirección...';
+            }
 
             const addressVal = document.getElementById('editBusinessAddress').value.trim();
             
             // Validar dirección si fue ingresada
-            let coords = { latitude: null, longitude: null };
-            if (addressVal !== '') {
+            let coords = { latitude: selectedEditCoords.latitude, longitude: selectedEditCoords.longitude };
+            if (addressVal !== '' && (coords.latitude === null || coords.longitude === null)) {
                 coords = await geocodeAddress(addressVal);
                 if (coords.latitude === null || coords.longitude === null) {
                     alert('La dirección ingresada no existe o no se pudo validar. Por favor, asegúrate de incluir calle, número y ciudad válidos (ej: Av. Pellegrini 1500, Rosario).');
-                    if (submitBtn) submitBtn.disabled = false;
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
                     return;
                 }
+                selectedEditCoords.latitude = coords.latitude;
+                selectedEditCoords.longitude = coords.longitude;
             }
 
             const payload = {
@@ -617,8 +779,8 @@ function setupFormSubmits() {
                 address: addressVal,
                 logo_url: document.getElementById('editBusinessLogoUrl').value.trim(),
                 owner_id: parseInt(userId, 10),
-                latitude: coords.latitude,
-                longitude: coords.longitude
+                latitude: selectedEditCoords.latitude,
+                longitude: selectedEditCoords.longitude
             };
 
             try {
@@ -637,7 +799,10 @@ function setupFormSubmits() {
             } catch (error) {
                 alert('Error de conexión.');
             } finally {
-                if (submitBtn) submitBtn.disabled = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
             }
         });
     }
@@ -732,20 +897,31 @@ async function geocodeAddress(address) {
 async function handleRegisterBusiness(e, formElement) {
     e.preventDefault();
     const submitBtn = formElement.querySelector('button[type="submit"]');
-    if (submitBtn) submitBtn.disabled = true;
+    const originalText = submitBtn ? submitBtn.textContent : 'Registrar Negocio';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Validando dirección...';
+    }
 
     const formData = new FormData(formElement);
     const addressVal = formData.get('businessAddress') ? formData.get('businessAddress').trim() : '';
     
+    let selectedCoords = formElement.id === 'firstBusinessForm' ? selectedFirstCoords : selectedModalCoords;
+
     // Validar dirección si fue ingresada
-    let coords = { latitude: null, longitude: null };
-    if (addressVal !== '') {
+    let coords = { latitude: selectedCoords.latitude, longitude: selectedCoords.longitude };
+    if (addressVal !== '' && (coords.latitude === null || coords.longitude === null)) {
         coords = await geocodeAddress(addressVal);
         if (coords.latitude === null || coords.longitude === null) {
             alert('La dirección ingresada no existe o no se pudo validar. Por favor, asegúrate de incluir calle, número y ciudad válidos (ej: Av. Pellegrini 1500, Rosario).');
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
             return;
         }
+        selectedCoords.latitude = coords.latitude;
+        selectedCoords.longitude = coords.longitude;
     }
 
     const payload = {
@@ -753,8 +929,8 @@ async function handleRegisterBusiness(e, formElement) {
         description: formData.get('businessDescription'),
         address: addressVal,
         logo_url: formData.get('businessLogoUrl'),
-        latitude: coords.latitude,
-        longitude: coords.longitude
+        latitude: selectedCoords.latitude,
+        longitude: selectedCoords.longitude
     };
 
     try {
@@ -767,6 +943,17 @@ async function handleRegisterBusiness(e, formElement) {
         if (res.ok) {
             alert('Negocio registrado con éxito.');
             formElement.reset();
+
+            // Limpiar coordenadas y ocultar contenedores de mapas
+            if (formElement.id === 'firstBusinessForm') {
+                selectedFirstCoords = { latitude: null, longitude: null };
+                const c = document.getElementById('firstMapContainer');
+                if (c) c.classList.add('d-none');
+            } else {
+                selectedModalCoords = { latitude: null, longitude: null };
+                const c = document.getElementById('modalMapContainer');
+                if (c) c.classList.add('d-none');
+            }
 
             // Cerrar el modal si existe
             const modalEl = document.getElementById('registerBusinessModal');
@@ -797,7 +984,10 @@ async function handleRegisterBusiness(e, formElement) {
     } catch (error) {
         alert('Error de conexión.');
     } finally {
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
     }
 }
 
