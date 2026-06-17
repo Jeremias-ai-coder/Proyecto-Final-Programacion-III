@@ -14,8 +14,10 @@ class ServiceController
             $businessFilter = isset($_GET['business_id']) ? sanitizeInt($_GET['business_id']) : null;
             $query = Service::with('business');
             if ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%");
+                });
             }
             if ($businessFilter) {
                 $query->where('business_id', $businessFilter);
@@ -30,8 +32,19 @@ class ServiceController
             $duration = sanitizeInt($input['duration_minutes'] ?? 30) ?? 30;
             $price = isset($input['price']) ? floatval($input['price']) : 0;
 
-            if (!$businessId || !Business::find($businessId)) {
-                jsonResponse(['message' => 'business_id inválido o no existe'], 400);
+            if (!$businessId) {
+                jsonResponse(['message' => 'business_id es obligatorio'], 400);
+            }
+            $business = Business::find($businessId);
+            if (!$business) {
+                jsonResponse(['message' => 'El negocio no existe'], 400);
+            }
+
+            // Validar propiedad del negocio
+            $userId = $_SESSION['user_id'] ?? null;
+            $userRole = $_SESSION['user_role'] ?? null;
+            if ($business->owner_id !== $userId && $userRole !== 'administrator') {
+                jsonResponse(['message' => 'No tienes permisos para agregar servicios a este negocio.'], 403);
             }
             if ($name === '') {
                 jsonResponse(['message' => 'El nombre del servicio es obligatorio'], 400);

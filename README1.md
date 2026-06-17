@@ -15,19 +15,50 @@ Proyecto Turnos Ya/
 │   │   ├── client.js        # Vista de Clientes, reservas y turnos
 │   │   ├── dashboard.js     # Panel comercial de dueños de negocios
 │   │   ├── crear_negocio.js # Wizard de registro comercial (Paso 1)
-│   │   └── agregar_horario.js # Wizard de registro comercial (Paso 2)
+│   │   ├── agregar_horario.js # Wizard de registro comercial (Paso 2)
+│   │   └── notifications.js # Lógica de notificaciones en tiempo real
 │   ├── .htaccess            # Reglas de redirección de Apache para XAMPP
 │   ├── api.php              # Enrutador y controlador de la API RESTful PHP
 │   └── index.php            # Index público principal
 ├── routes/                  # Enrutamiento Backend
 │   └── router.php           # Enrutador simple del servidor para HTML y APIs
 ├── src/                     # Núcleo de la Aplicación (Backend Principal)
+│   ├── Controllers/         # Controladores de la API (Mapeo de rutas)
+│   │   ├── AgendaController.php
+│   │   ├── AppointmentController.php
+│   │   ├── AuthController.php
+│   │   ├── BusinessController.php
+│   │   ├── NotificationController.php
+│   │   ├── ReviewController.php
+│   │   ├── ScheduleController.php
+│   │   ├── ServiceController.php
+│   │   └── UserController.php
+│   ├── Middleware/          # Capa de Filtros Intermedios (Pipeline)
+│   │   ├── Middleware.php
+│   │   ├── MiddlewarePipeline.php
+│   │   ├── AuthMiddleware.php
+│   │   └── RateLimitMiddleware.php
 │   ├── Models/              # Modelos de base de datos ORM (Eloquent)
-│   │   ├── User.php
+│   │   ├── AddressCache.php
+│   │   ├── Appointment.php
 │   │   ├── Business.php
+│   │   ├── MailQueue.php
+│   │   ├── Notification.php
+│   │   ├── Review.php
 │   │   ├── Service.php
-│   │   ├── WorkSchedule.php
-│   │   └── Appointment.php
+│   │   ├── User.php
+│   │   ├── UserRememberToken.php
+│   │   └── WorkSchedule.php
+│   ├── Security/            # Utilidades de seguridad, sesión y rate limit
+│   │   ├── helpers.php      # Validaciones y respuestas del sistema
+│   │   ├── session.php      # Configuración de sesión y remember me
+│   │   ├── RateLimiter.php  # Limitador de peticiones general
+│   │   └── LoginRateLimiter.php # Limitador contra fuerza bruta por email
+│   ├── Services/            # Servicios e Integraciones de Terceros
+│   │   ├── Mailer.php       # Gestor y cola asíncrona de correos
+│   │   └── WhatsApp.php     # Notificaciones vía Twilio API
+│   ├── cron/                # Tareas programadas en segundo plano
+│   │   └── process_mail_queue.php
 │   └── bootstrap.php        # Inicialización de Eloquent, conexión y lectura de .env
 ├── vistas/                  # Interfaces de Usuario (Frontend HTML)
 │   ├── inicio.html          # Landing de bienvenida y acceso
@@ -91,26 +122,51 @@ Para el servidor PHP integrado se puede usar:
 C:\xampp\php\php.exe -S localhost:8000 -t public
 ```
 
-## API básica
+## API RESTful Completa
 
-- `GET /api/businesses`
-- `POST /api/businesses`
-- `GET /api/services?search=...`
-- `POST /api/services`
-- `POST /api/appointments`
-- `DELETE /api/appointments?id=...`
+La API se encuentra expuesta bajo el prefijo `/api/` y mapea los siguientes endpoints controlados por middleware:
 
-Comportamiento y validaciones importantes:
+### Sesión y Cuentas
+* **`POST /api/users`**: Registro de nuevos usuarios.
+* **`POST /api/login`**: Inicio de sesión (con protección de bloqueo por fuerza bruta y regeneración de sesión).
+* **`POST /api/logout`**: Cierre de sesión y limpieza de tokens *Remember Me*.
 
-- Los endpoints realizan sanitización básica de entradas (strings, enteros, fechas y horas).
-- Devuelven códigos HTTP apropiados: `201` para recursos creados, `400` para peticiones mal formadas, `404` cuando no se encuentra un recurso, y `409` cuando hay conflicto (por ejemplo email duplicado).
-- Los campos obligatorios devuelven mensajes de error JSON explicativos cuando faltan o son inválidos.
+### Negocios
+* **`GET /api/businesses`**: Lista todos los negocios. Admite filtro `?owner_id=...` y paginación.
+* **`POST /api/businesses`**: Crea un nuevo negocio (geolocaliza la dirección vía Nominatim de forma asíncrona con fallback).
+* **`PUT /api/businesses`**: Modifica un negocio existente (solo dueño o administrador).
+* **`DELETE /api/businesses?id=...`**: Elimina un negocio y limpia dependencias en cascada.
+* **`POST /api/businesses-with-schedule`**: Crea un negocio y asocia múltiples horarios de atención en una transacción atómica.
 
-Ejemplo rápido (crear usuario):
+### Servicios y Horarios
+* **`GET /api/services`**: Lista servicios del sistema. Admite parámetros de búsqueda `?search=...` y filtro `?business_id=...` agrupados de forma segura en SQL.
+* **`POST /api/services`**: Crea un servicio en un negocio (solo dueño del negocio o administrador).
+* **`DELETE /api/services?id=...`**: Elimina un servicio (solo dueño o administrador).
+* **`POST /api/schedule`**: Agrega un horario de trabajo individual a un negocio (solo dueño o administrador).
+* **`DELETE /api/schedule?id=...`**: Elimina un horario (solo dueño o administrador).
 
-```bash
-curl -X POST http://localhost:8000/api/users \
-	-H "Content-Type: application/json" \
-	-d '{"name":"Juan", "email":"juan@ejemplo.com", "role":"client"}'
-```
+### Reservas (Turnos) y Agenda
+* **`GET /api/agenda?business_id=...&date=...`**: Devuelve los turnos ocupados y el horario del negocio para un día específico. La información de los usuarios que reservaron se mantiene estrictamente anónima a menos que la petición provenga del dueño del negocio o un administrador.
+* **`GET /api/appointments`**: Obtiene el listado de turnos del usuario autenticado (autocompleta síncronamente turnos pasados en un lote SQL optimizado en caliente).
+* **`POST /api/appointments`**: Reserva un nuevo turno (valida que el horario esté dentro del horario del negocio, no sea en el pasado y no colisione con otra reserva).
+* **`PUT /api/appointments`**: Actualiza el estado de un turno (`pending`, `completed`, `cancelled`). Los clientes solo pueden cambiar su turno a `cancelled` y están sujetos a la regla de cancelación con 24 horas de anticipación.
+* **`DELETE /api/appointments?id=...`**: Cancela un turno aplicando la regla de cancelación con 24 horas de anticipación para clientes.
+
+### Calificaciones y Notificaciones
+* **`GET /api/reviews?business_id=...`**: Lista las reseñas y puntuación de un negocio.
+* **`POST /api/reviews`**: Califica un turno completado (valida que el turno haya concluido y pertenezca al usuario).
+* **`GET /api/notifications`**: Obtiene las últimas 40 notificaciones in-app del usuario.
+* **`PUT /api/notifications`**: Marca una o todas las notificaciones del usuario como leídas.
+
+---
+
+## 🔒 Mejoras de Seguridad, Lógica y Rendimiento Recientes
+
+1. **Protección contra Fuerza Bruta (Lockout):** Se implementó un limitador de intentos en el login (`LoginRateLimiter`) que bloquea temporalmente por 15 minutos el acceso a un email tras acumular 5 fallos consecutivos.
+2. **Mitigación de Secuestro de Sesión (Session Fixation):** Se fuerza la regeneración del ID de sesión de PHP (`session_regenerate_id(true)`) al autenticarse exitosamente.
+3. **Privacidad de Datos Personales:** Ocultamiento automático del hash `password` en el modelo Eloquent `User` y restricción condicional de la relación `user` en el listado público de turnos (`/api/agenda`).
+4. **Control de Acceso y Autorización Robusto:** Validación estricta de propiedad/rol en la creación de servicios, horarios y transiciones de estado de reservas (PUT/DELETE) previniendo que los clientes marquen sus propias citas como completadas o evadan el límite de cancelación de 24 horas.
+5. **Optimización de Base de Datos:** Corrección de la precedencia lógica del operador `OR` en búsquedas de servicios SQL y migración del autocompletado iterativo individual a actualizaciones masivas (bulk update) en peticiones GET.
+6. **Robustez y Portabilidad:** Soporte de timeouts y fallbacks para fallos de la API Nominatim, y soporte multiplataforma (Windows y Linux) para disparar el procesamiento de correos en segundo plano.
+
 

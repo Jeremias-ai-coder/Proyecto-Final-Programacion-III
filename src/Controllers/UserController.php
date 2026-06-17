@@ -46,7 +46,7 @@ class UserController
         if ($method === 'POST') {
             $name = sanitizeString($input['name'] ?? '');
             $email = sanitizeString($input['email'] ?? '');
-            $password = sanitizeString($input['password'] ?? '');
+            $password = isset($input['password']) ? trim((string)$input['password']) : '';
             $role = 'client';
 
             if ($name === '' || $email === '') {

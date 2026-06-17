@@ -20,16 +20,22 @@ class AppointmentController
             if (!$userId) {
                 jsonResponse(['message' => 'Inicie sesión para ver sus turnos.'], 401);
             }
-            // Autocompletar turnos pasados del usuario
-            $pendingAppts = Appointment::where('user_id', $userId)
+            // Autocompletar turnos pasados del usuario de forma eficiente
+            $today = date('Y-m-d');
+            Appointment::where('user_id', $userId)
                 ->where('status', 'pending')
+                ->where('date', '<', $today)
+                ->update(['status' => 'completed']);
+
+            $todayAppts = Appointment::where('user_id', $userId)
+                ->where('status', 'pending')
+                ->where('date', $today)
                 ->with('service')
                 ->get();
             $now = time();
-            foreach ($pendingAppts as $appt) {
+            foreach ($todayAppts as $appt) {
                 $duration = $appt->service ? $appt->service->duration_minutes : 30;
-                $dateStr = $appt->date instanceof \DateTimeInterface ? $appt->date->format('Y-m-d') : (string)$appt->date;
-                $apptTime = strtotime($dateStr . ' ' . $appt->time);
+                $apptTime = strtotime($today . ' ' . $appt->time);
                 $endTime = strtotime("+{$duration} minutes", $apptTime);
                 if ($endTime < $now) {
                     $appt->status = 'completed';
@@ -203,6 +209,13 @@ class AppointmentController
                 jsonResponse(['message' => 'Turno no encontrado'], 404);
             }
 
+            if ($appointment->status === 'cancelled') {
+                jsonResponse(['message' => 'Este turno ya ha sido cancelado.'], 400);
+            }
+            if ($appointment->status === 'completed') {
+                jsonResponse(['message' => 'No se puede modificar un turno ya completado.'], 400);
+            }
+
             $sessionUserId = $_SESSION['user_id'] ?? null;
             $sessionUserRole = $_SESSION['user_role'] ?? null;
             $business = Business::find($appointment->business_id);
@@ -215,6 +228,27 @@ class AppointmentController
 
             if (!in_array($status, ['pending', 'completed', 'cancelled'])) {
                 jsonResponse(['message' => 'Estado de turno inválido'], 400);
+            }
+
+            // Restricción de transiciones para clientes
+            if ($isClient && !$isOwner && $sessionUserRole !== 'administrator') {
+                if ($status !== 'cancelled') {
+                    jsonResponse(['message' => 'Los clientes solo pueden cancelar turnos.'], 403);
+                }
+            }
+
+            // Validar restricción de 24 horas para cancelación
+            if ($status === 'cancelled') {
+                if (!$isOwner && $sessionUserRole !== 'administrator') {
+                    $dateStr = $appointment->date instanceof \DateTimeInterface ? $appointment->date->format('Y-m-d') : (string)$appointment->date;
+                    $appointmentTime = strtotime($dateStr . ' ' . $appointment->time);
+                    $now = time();
+                    $diffHours = ($appointmentTime - $now) / 3600;
+
+                    if ($diffHours < 24) {
+                        jsonResponse(['message' => 'Solo puedes cancelar turnos con al menos 24 horas de anticipación.'], 400);
+                    }
+                }
             }
 
             $oldStatus = $appointment->status;

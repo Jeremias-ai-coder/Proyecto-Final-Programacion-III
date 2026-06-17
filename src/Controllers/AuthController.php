@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\User;
 use App\Models\UserRememberToken;
+use App\Security\LoginRateLimiter;
 
 class AuthController
 {
@@ -12,16 +13,28 @@ class AuthController
         if ($route === 'login') {
             if ($method === 'POST') {
                 $email = sanitizeString($input['email'] ?? '');
-                $password = sanitizeString($input['password'] ?? '');
+                $password = isset($input['password']) ? trim((string)$input['password']) : '';
 
                 if ($email === '' || $password === '') {
                     jsonResponse(['message' => 'El correo y la contraseña son obligatorios'], 400);
                 }
 
+                $limiter = new LoginRateLimiter();
+                $lockCheck = $limiter->isLocked($email);
+                if ($lockCheck['locked']) {
+                    $mins = ceil($lockCheck['remaining_seconds'] / 60);
+                    jsonResponse(['message' => "Cuenta bloqueada temporalmente debido a demasiados intentos fallidos. Intente de nuevo en {$mins} minutos."], 429);
+                }
+
                 $user = User::where('email', $email)->first();
                 if (!$user || !password_verify($password, $user->password)) {
+                    $limiter->registerFailedAttempt($email);
                     jsonResponse(['message' => 'Correo electrónico o contraseña incorrectos'], 401);
                 }
+
+                $limiter->resetAttempts($email);
+
+                session_regenerate_id(true);
 
                 $_SESSION['user_id'] = $user->id;
                 $_SESSION['user_role'] = $user->role;

@@ -20,7 +20,17 @@ class AgendaController
             if (!validateDate($date)) {
                 jsonResponse(['message' => 'Formato de fecha inválido (YYYY-MM-DD)'], 400);
             }
-            $appointments = Appointment::with(['service', 'user'])
+            $sessionUserId = $_SESSION['user_id'] ?? null;
+            $sessionUserRole = $_SESSION['user_role'] ?? null;
+            $business = Business::find($businessId);
+            $isOwner = $business && $business->owner_id === $sessionUserId;
+
+            $withRelations = ['service'];
+            if ($isOwner || $sessionUserRole === 'administrator') {
+                $withRelations[] = 'user';
+            }
+
+            $appointments = Appointment::with($withRelations)
                 ->where('business_id', $businessId)
                 ->where('date', $date)
                 ->get();

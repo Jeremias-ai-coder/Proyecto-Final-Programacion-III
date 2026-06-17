@@ -15,8 +15,19 @@ class ScheduleController
             $start = sanitizeString($input['start_time'] ?? '09:00');
             $end = sanitizeString($input['end_time'] ?? '18:00');
 
-            if (!$businessId || !Business::find($businessId)) {
-                jsonResponse(['message' => 'business_id inválido o no existe'], 400);
+            if (!$businessId) {
+                jsonResponse(['message' => 'business_id es obligatorio'], 400);
+            }
+            $business = Business::find($businessId);
+            if (!$business) {
+                jsonResponse(['message' => 'El negocio no existe'], 400);
+            }
+
+            // Validar propiedad del negocio
+            $userId = $_SESSION['user_id'] ?? null;
+            $userRole = $_SESSION['user_role'] ?? null;
+            if ($business->owner_id !== $userId && $userRole !== 'administrator') {
+                jsonResponse(['message' => 'No tienes permisos para agregar horarios a este negocio.'], 403);
             }
             if ($day < 1 || $day > 7) {
                 jsonResponse(['message' => 'day_of_week debe estar entre 1 y 7'], 400);

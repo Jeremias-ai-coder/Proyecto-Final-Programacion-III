@@ -14,6 +14,7 @@ class User extends Model
     protected $fillable = ['name', 'email', 'role', 'password', 'email_notifications', 'phone', 'whatsapp_notifications'];
     public $timestamps = false;
     protected $dates = ['deleted_at'];
+    protected $hidden = ['password'];
 
     public function appointments()
     {

@@ -65,9 +65,7 @@ class BusinessController
                     }
                 }
 
-                if ($address !== '' && ($latitude === null || $longitude === null)) {
-                    jsonResponse(['message' => 'La dirección ingresada no existe o no se pudo validar.'], 400);
-                }
+                // No bloquear si la geolocalización falla o no devuelve coordenadas. Se guardará como NULL.
 
                 try {
                     $business = Business::create([
@@ -132,9 +130,7 @@ class BusinessController
                     }
                 }
 
-                if ($address !== '' && ($latitude === null || $longitude === null)) {
-                    jsonResponse(['message' => 'La dirección ingresada no existe o no se pudo validar.'], 400);
-                }
+                // No bloquear si la geolocalización falla o no devuelve coordenadas. Se guardará como NULL.
 
                 try {
                     $business->update([
@@ -229,9 +225,7 @@ class BusinessController
                     }
                 }
 
-                if ($address !== '' && ($latitude === null || $longitude === null)) {
-                    jsonResponse(['message' => 'La dirección ingresada no existe o no se pudo validar.'], 400);
-                }
+                // No bloquear si la geolocalización falla o no devuelve coordenadas. Se guardará como NULL.
 
                 try {
                     $business = \Illuminate\Database\Capsule\Manager::transaction(function() use ($name, $description, $address, $logoUrl, $ownerId, $latitude, $longitude, $startDay, $endDay, $startTime, $endTime) {
@@ -297,7 +291,8 @@ class BusinessController
         $url = 'https://nominatim.openstreetmap.org/search?q=' . urlencode($address) . '&format=json&limit=1';
         $opts = [
             'http' => [
-                'header' => "User-Agent: TurnosYa-App/1.0\r\n"
+                'header' => "User-Agent: TurnosYa-App/1.0\r\n",
+                'timeout' => 5
             ]
         ];
         $context = stream_context_create($opts);

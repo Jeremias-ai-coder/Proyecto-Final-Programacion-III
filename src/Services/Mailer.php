@@ -246,13 +246,19 @@ class Mailer
             $scriptPath = realpath(__DIR__ . '/../cron/process_mail_queue.php');
             if ($scriptPath) {
                 $phpPath = 'C:\\xampp\\php\\php.exe';
-                if (!file_exists($phpPath)) {
+                if (PHP_OS_FAMILY !== 'Windows' || !file_exists($phpPath)) {
                     $phpPath = 'php';
                 }
                 
-                // Ejecución en segundo plano silencioso en Windows
-                $cmd = "start /B " . escapeshellcmd($phpPath) . " " . escapeshellarg($scriptPath);
-                pclose(popen($cmd, "r"));
+                if (PHP_OS_FAMILY === 'Windows') {
+                    // Ejecución en segundo plano silencioso en Windows
+                    $cmd = "start /B " . escapeshellcmd($phpPath) . " " . escapeshellarg($scriptPath);
+                    pclose(popen($cmd, "r"));
+                } else {
+                    // Ejecución en segundo plano silencioso en Unix/Linux
+                    $cmd = escapeshellcmd($phpPath) . " " . escapeshellarg($scriptPath) . " > /dev/null 2>&1 &";
+                    exec($cmd);
+                }
             }
         } catch (\Throwable $e) {
             // Silenciar
