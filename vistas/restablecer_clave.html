@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión - Turnos Ya</title>
+    <title>Restablecer contraseña - Turnos Ya</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -86,33 +86,28 @@
     <div class="container center-card">
         <div class="card w-100 shadow-sm" style="max-width: 440px;">
             <div class="card-body p-4">
-                <a href="./" style="text-decoration: none; display: inline-block;">
+                <a href="./" id="backToHomeLink" style="text-decoration: none; display: inline-block;">
                     <div class="logo-small">TY</div>
                 </a>
-                <h2 class="card-title fw-bold text-dark mb-1">Iniciar sesión</h2>
-                <p class="text-muted mb-4 small">Ingresa tus credenciales para administrar tus citas y negocios.</p>
+                <h2 class="card-title fw-bold text-dark mb-1">Nueva contraseña</h2>
+                <p class="text-muted mb-4 small" id="introText">Elige una contraseña nueva y segura para tu cuenta.</p>
                 
-                <form id="loginForm">
+                <form id="resetForm">
                     <div class="mb-3">
-                        <label class="form-label">Correo electrónico</label>
-                        <input type="email" name="email" class="form-control" placeholder="nombre@ejemplo.com" required>
+                        <label class="form-label">Nueva contraseña</label>
+                        <input type="password" name="password" id="password" class="form-control" placeholder="Mínimo 6 caracteres" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Contraseña</label>
-                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    <div class="mb-4">
+                        <label class="form-label">Confirmar nueva contraseña</label>
+                        <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Repite la contraseña" required>
                     </div>
-                    <div class="form-check mb-3 d-flex align-items-center gap-2">
-                        <input class="form-check-input mt-0" type="checkbox" id="rememberMe" name="remember_me">
-                        <label class="form-check-label text-muted small" for="rememberMe" style="cursor: pointer;">Recordarme por 30 días</label>
-                    </div>
-                    <button class="btn btn-custom w-100 mb-3 shadow-sm" type="submit">Ingresar</button>
+                    <button class="btn btn-custom w-100 mb-3 shadow-sm" type="submit" id="btnSubmit">Guardar contraseña</button>
                 </form>
                 
-                <div id="loginMessage" class="alert d-none py-2 text-center small" role="alert"></div>
+                <div id="resetMessage" class="alert d-none py-2 text-center small" role="alert"></div>
                 
-                <div class="text-center pt-3 border-top mt-3 d-flex flex-column gap-2">
-                    <a href="registro" class="link-custom">Crear una cuenta nueva</a>
-                    <a href="recuperar-clave" class="link-custom small text-muted">¿Olvidaste tu contraseña?</a>
+                <div class="text-center pt-3 border-top mt-3">
+                    <a href="login" class="link-custom">Volver al inicio de sesión</a>
                 </div>
             </div>
         </div>
@@ -122,7 +117,7 @@
             try {
                 const pathname = window.location.pathname;
                 const parts = pathname.split('/');
-                const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+                const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api','recuperar-clave','restablecer-clave'];
                 while (parts.length > 0) {
                     const last = parts[parts.length - 1];
                     if (last === '' || knownPages.includes(last)) {
@@ -160,7 +155,12 @@
                         el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
                     }
                 });
+                const backLink = document.getElementById('backToHomeLink');
+                if (backLink) {
+                    backLink.setAttribute('href', pageBasePath + '/');
+                }
             };
+
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', correctLinks);
             } else {
@@ -168,53 +168,68 @@
             }
         }
 
-        const loginMessage = document.getElementById('loginMessage');
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
 
-        function showLoginMessage(message, type = 'danger') {
-            loginMessage.textContent = message;
-            loginMessage.className = `alert alert-${type} py-2 text-center small`;
-            loginMessage.classList.remove('d-none');
+        const resetForm = document.getElementById('resetForm');
+        const resetMessage = document.getElementById('resetMessage');
+        const introText = document.getElementById('introText');
+        const btnSubmit = document.getElementById('btnSubmit');
+
+        function showMessage(message, type = 'danger') {
+            resetMessage.textContent = message;
+            resetMessage.className = `alert alert-${type} py-2 text-center small`;
+            resetMessage.classList.remove('d-none');
         }
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            loginMessage.classList.add('d-none');
-            const formData = new FormData(e.target);
-            const email = formData.get('email');
-            const password = formData.get('password');
-            const remember_me = document.getElementById('rememberMe').checked;
+        if (!token) {
+            resetForm.classList.add('d-none');
+            introText.classList.add('d-none');
+            showMessage('El token de recuperación falta o es inválido.');
+        }
 
-            if (!email || !password) {
-                showLoginMessage('Debes completar el correo y la contraseña.');
+        resetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            resetMessage.classList.add('d-none');
+            const password = document.getElementById('password').value;
+            const confirm_password = document.getElementById('confirm_password').value;
+
+            if (password !== confirm_password) {
+                showMessage('Las contraseñas ingresadas no coinciden.');
                 return;
             }
 
+            if (password.length < 6) {
+                showMessage('La nueva contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Guardando...';
+
             try {
-                const res = await fetch(`${apiUrl}/login`, {
+                const res = await fetch(`${apiUrl}/reset-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, remember_me })
+                    body: JSON.stringify({ token, password })
                 });
                 const result = await res.json();
 
                 if (res.ok) {
-                    localStorage.setItem('userId', result.id);
-                    localStorage.setItem('userRole', result.role || 'client');
-                    localStorage.setItem('userName', result.name || '');
-                    showLoginMessage('Sesión iniciada correctamente. Redirigiendo...', 'success');
+                    showMessage('¡Contraseña restablecida con éxito! Redirigiendo al inicio de sesión...', 'success');
+                    resetForm.reset();
                     setTimeout(() => {
-                        const targetRole = result.role || 'client';
-                        if (targetRole === 'owner' || targetRole === 'administrator' || targetRole === 'staff') {
-                            window.location.href = pageBasePath + '/dashboard';
-                        } else {
-                            window.location.href = pageBasePath + '/pagina-inicio';
-                        }
-                    }, 900);
+                        window.location.href = pageBasePath + '/login';
+                    }, 2000);
                 } else {
-                    showLoginMessage(result.message || 'Correo electrónico o contraseña incorrectos.');
+                    showMessage(result.message || 'Ocurrió un error al restablecer la contraseña.');
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = 'Guardar contraseña';
                 }
             } catch (error) {
-                showLoginMessage('Error de conexión. Por favor intenta nuevamente.');
+                showMessage('Error de conexión. Por favor intenta nuevamente.');
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Guardar contraseña';
             }
         });
     </script>

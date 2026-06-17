@@ -96,9 +96,16 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 // El validador coincide de forma segura. Buscamos el usuario asociado.
                 $user = \App\Models\User::find($tokenModel->user_id);
                 if ($user && $user->deleted_at === null) {
+                    $role = $user->role;
+                    if ($role === 'client') {
+                        $isStaff = \App\Models\BusinessStaff::where('user_id', $user->id)->exists();
+                        if ($isStaff) {
+                            $role = 'staff';
+                        }
+                    }
                     // Re-establecemos la sesión
                     $_SESSION['user_id'] = $user->id;
-                    $_SESSION['user_role'] = $user->role;
+                    $_SESSION['user_role'] = $role;
                     $_SESSION['user_name'] = $user->name;
                     $_SESSION['created_time'] = time();
                     $_SESSION['last_activity'] = time();

@@ -24,9 +24,11 @@ class AgendaController
             $sessionUserRole = $_SESSION['user_role'] ?? null;
             $business = Business::find($businessId);
             $isOwner = $business && $business->owner_id === $sessionUserId;
+            $isStaff = $business && \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $sessionUserId)->exists();
+            $isManager = $isOwner || $isStaff;
 
             $withRelations = ['service'];
-            if ($isOwner || $sessionUserRole === 'administrator') {
+            if ($isManager || $sessionUserRole === 'administrator') {
                 $withRelations[] = 'user';
             }
 

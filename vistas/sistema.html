@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración Global - Turnos Ya</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #f8fafc; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1e293b;
+        }
+        .navbar-custom {
+            background-color: #0f172a; /* Azul muy oscuro para el sistema */
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+        .logo-nav {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #009ee3, #0081bb);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+        .card { 
+            border-radius: 14px; 
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.02);
+            background-color: #ffffff;
+            margin-bottom: 24px;
+        }
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            font-weight: 600;
+            color: #64748b;
+            padding: 10px 20px;
+            transition: all 0.2s ease;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            border: 1px solid #cbd5e1;
+        }
+        /* Metric cards */
+        .metric-card {
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .metric-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            flex-shrink: 0;
+        }
+        .metric-value {
+            font-weight: 800;
+            font-size: 1.8rem;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        .metric-title {
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-client { background-color: #e2e8f0; color: #475569; }
+        .badge-owner { background-color: #dbeafe; color: #1e40af; }
+        .badge-admin { background-color: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 shadow-sm py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand fw-bold fs-4 text-white d-flex align-items-center gap-2" href="#">
+                <div class="logo-nav">TY</div> Panel de Control Global
+            </a>
+            <button id="logoutBtn" class="btn btn-outline-danger btn-sm fw-semibold px-4" style="border-radius: 8px;">Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row mb-4">
+            <div class="col-12 text-center text-md-start">
+                <h2 class="fw-bold text-dark">Administración del Sistema</h2>
+                <p class="text-muted">Gestión global de usuarios, sucursales y métricas operativas de la plataforma.</p>
+            </div>
+        </div>
+
+        <!-- Fila de KPIs -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div class="metric-icon"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <div class="metric-title">Usuarios Registrados</div>
+                        <div class="metric-value" id="kpiUsers">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div class="metric-icon"><i class="bi bi-shop"></i></div>
+                    <div>
+                        <div class="metric-title">Negocios Activos</div>
+                        <div class="metric-value" id="kpiBusinesses">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div class="metric-icon"><i class="bi bi-person-badge"></i></div>
+                    <div>
+                        <div class="metric-title">Administradores</div>
+                        <div class="metric-value" id="kpiAdmins">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestañas de Navegación -->
+        <div class="card border-0 shadow-sm p-2 mb-4">
+            <ul class="nav nav-pills gap-2 flex-column flex-sm-row" id="adminTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active d-inline-flex align-items-center gap-2" id="users-tab" data-bs-toggle="pill" data-bs-target="#tab-users" type="button" role="tab" aria-selected="true">
+                        <i class="bi bi-people"></i> Gestión de Usuarios
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="businesses-tab" data-bs-toggle="pill" data-bs-target="#tab-businesses" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-shop"></i> Negocios Registrados
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Contenido de Pestañas -->
+        <div class="tab-content" id="adminTabContent">
+            <!-- Pestaña 1: Usuarios -->
+            <div class="tab-pane fade show active" id="tab-users" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-dark mb-0">Base de Usuarios</h5>
+                        <input type="text" id="userSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre o email..." style="max-width: 250px; border-radius: 8px;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Rol actual</th>
+                                    <th>Teléfono</th>
+                                    <th style="text-align: center; width: 200px;">Cambiar Rol</th>
+                                    <th style="text-align: center; width: 120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">Cargando usuarios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 2: Negocios -->
+            <div class="tab-pane fade" id="tab-businesses" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-dark mb-0">Listado de Negocios y Sucursales</h5>
+                        <input type="text" id="businessSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre..." style="max-width: 250px; border-radius: 8px;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Logo</th>
+                                    <th>Nombre del Negocio</th>
+                                    <th>Dueño (Owner)</th>
+                                    <th>Dirección</th>
+                                    <th style="text-align: center; width: 120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="businessesTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">Cargando negocios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function() {
+            const pageBasePath = (function() {
+                try {
+                    const pathname = window.location.pathname;
+                    const parts = pathname.split('/');
+                    const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api','sistema','admin'];
+                    while (parts.length > 0) {
+                        const last = parts[parts.length - 1];
+                        if (last === '' || knownPages.includes(last)) {
+                            parts.pop();
+                        } else {
+                            break;
+                        }
+                    }
+                    return parts.join('/');
+                } catch (e) {
+                    return '';
+                }
+            })();
+
+            const scriptEl = document.createElement('script');
+            scriptEl.src = pageBasePath + '/js/sistema.js?v=' + Date.now();
+            scriptEl.defer = true;
+            document.body.appendChild(scriptEl);
+        })();
+    </script>
+</body>
+</html>

@@ -84,11 +84,17 @@ class UserController
 
         if ($method === 'PUT') {
             $sessionUserId = $_SESSION['user_id'] ?? null;
+            $sessionUserRole = $_SESSION['user_role'] ?? null;
             if (!$sessionUserId) {
                 jsonResponse(['message' => 'No autorizado'], 401);
             }
 
-            $user = User::find($sessionUserId);
+            $targetUserId = isset($input['id']) ? sanitizeInt($input['id']) : $sessionUserId;
+            if ($targetUserId !== $sessionUserId && $sessionUserRole !== 'administrator') {
+                jsonResponse(['message' => 'No tienes permisos para modificar este usuario.'], 403);
+            }
+
+            $user = User::find($targetUserId);
             if (!$user) {
                 jsonResponse(['message' => 'Usuario no encontrado'], 404);
             }
@@ -102,9 +108,58 @@ class UserController
             if (isset($input['whatsapp_notifications'])) {
                 $user->whatsapp_notifications = (int)$input['whatsapp_notifications'];
             }
+            if (isset($input['role']) && $sessionUserRole === 'administrator') {
+                if (validateRole($input['role'])) {
+                    $user->role = $input['role'];
+                } else {
+                    jsonResponse(['message' => 'Rol inválido'], 400);
+                }
+            }
+
+            if (isset($input['new_password'])) {
+                $oldPassword = isset($input['old_password']) ? trim((string)$input['old_password']) : '';
+                $newPassword = trim((string)$input['new_password']);
+
+                if ($targetUserId === $sessionUserId) {
+                    if ($oldPassword === '' || !password_verify($oldPassword, $user->password)) {
+                        jsonResponse(['message' => 'La contraseña actual ingresada es incorrecta.'], 400);
+                    }
+                }
+
+                if (!validatePassword($newPassword)) {
+                    jsonResponse(['message' => 'La nueva contraseña debe tener al menos 6 caracteres.'], 400);
+                }
+
+                $user->password = password_hash($newPassword, PASSWORD_DEFAULT);
+            }
 
             $user->save();
-            jsonResponse(['message' => 'Preferencias actualizadas con éxito', 'user' => $user]);
+            jsonResponse(['message' => 'Usuario actualizado con éxito', 'user' => $user]);
+        }
+
+        if ($method === 'DELETE') {
+            $sessionUserId = $_SESSION['user_id'] ?? null;
+            $sessionUserRole = $_SESSION['user_role'] ?? null;
+            if (!$sessionUserId || $sessionUserRole !== 'administrator') {
+                jsonResponse(['message' => 'No autorizado'], 401);
+            }
+
+            $targetId = isset($_GET['id']) ? sanitizeInt($_GET['id']) : null;
+            if (!$targetId) {
+                jsonResponse(['message' => 'Falta id de usuario'], 400);
+            }
+
+            if ($targetId === $sessionUserId) {
+                jsonResponse(['message' => 'No puedes desactivar tu propia cuenta.'], 400);
+            }
+
+            $user = User::find($targetId);
+            if (!$user) {
+                jsonResponse(['message' => 'Usuario no encontrado'], 404);
+            }
+
+            $user->delete(); // Soft delete
+            jsonResponse(['message' => 'Usuario desactivado con éxito']);
         }
     }
 }

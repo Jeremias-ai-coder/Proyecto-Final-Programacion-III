@@ -39,4 +39,9 @@ class Business extends Model
     {
         return $this->hasManyThrough(Review::class, Appointment::class);
     }
+
+    public function staff()
+    {
+        return $this->belongsToMany(User::class, 'business_staff', 'business_id', 'user_id');
+    }
 }

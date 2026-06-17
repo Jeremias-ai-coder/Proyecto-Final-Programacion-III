@@ -16,7 +16,8 @@ Proyecto Turnos Ya/
 │   │   ├── dashboard.js     # Panel comercial de dueños de negocios
 │   │   ├── crear_negocio.js # Wizard de registro comercial (Paso 1)
 │   │   ├── agregar_horario.js # Wizard de registro comercial (Paso 2)
-│   │   └── notifications.js # Lógica de notificaciones en tiempo real
+│   │   ├── notifications.js # Lógica de notificaciones en tiempo real
+│   │   └── sistema.js       # Lógica del panel global Superadmin
 │   ├── .htaccess            # Reglas de redirección de Apache para XAMPP
 │   ├── api.php              # Enrutador y controlador de la API RESTful PHP
 │   └── index.php            # Index público principal
@@ -42,6 +43,7 @@ Proyecto Turnos Ya/
 │   │   ├── AddressCache.php
 │   │   ├── Appointment.php
 │   │   ├── Business.php
+│   │   ├── BusinessStaff.php  # Relación intermedia dueños-personal
 │   │   ├── MailQueue.php
 │   │   ├── Notification.php
 │   │   ├── Review.php
@@ -67,7 +69,8 @@ Proyecto Turnos Ya/
 │   ├── crear_negocio.html   # Wizard paso 1: Datos del negocio
 │   ├── agregar_horario.html # Wizard paso 2: Horarios de atención
 │   ├── pagina_inicio.html   # Turnero del Cliente e historial "Mis Turnos"
-│   └── administrador.html   # Dashboard comercial colapsable y pulcro
+│   ├── administrador.html   # Dashboard comercial colapsable y pulcro
+│   └── sistema.html         # Panel de Control Global (Superadmin)
 ├── .env                     # Variables de configuración privada (MySQL)
 ├── composer.json            # Gestor de dependencias de PHP
 └── README.md                # Esta guía explicativa técnica
@@ -95,7 +98,8 @@ Luego abre en el navegador:
 
 - `http://localhost:8000/` - Página de inicio (registro / inicio de sesión)
 - `http://localhost:8000/pagina-inicio` o `http://localhost:8000/client` - Vista de cliente
-- `http://localhost:8000/dashboard` - Panel de administrador (si estás autenticado)
+- `http://localhost:8000/dashboard` - Panel de administración del negocio (Dueño o Staff)
+- `http://localhost:8000/sistema` - Panel de control global del Superadmin
 - `http://localhost:8000/crear-negocio` - Página para ingresar un nuevo negocio
 - `http://localhost:8000/agregar-horario` - Página para definir el horario de un negocio recién creado
 
@@ -106,6 +110,8 @@ Luego abre en el navegador:
 - `http://localhost:8000/login` - Formulario de inicio de sesión
 - `http://localhost:8000/pagina-inicio` - Vista de cliente
 - `http://localhost:8000/client` - Alias para la vista de cliente
+- `http://localhost:8000/dashboard` - Panel de administración
+- `http://localhost:8000/sistema` (o `/admin`) - Panel de control global (Superadmin)
 - `http://localhost:8000/crear-negocio` - Formulario para ingresar un negocio
 - `http://localhost:8000/agregar-horario` - Formulario para agregar horario de atención
 - `http://localhost:8000/api/businesses` - API RESTful
@@ -128,14 +134,17 @@ La API se encuentra expuesta bajo el prefijo `/api/` y mapea los siguientes endp
 
 ### Sesión y Cuentas
 * **`POST /api/users`**: Registro de nuevos usuarios.
+* **`GET /api/users`**: Obtiene todos los usuarios (solo Superadmin) o uno por ID/email.
+* **`PUT /api/users`**: Modifica el perfil de usuario (los administradores pueden cambiar roles mediante este endpoint).
+* **`DELETE /api/users?id=...`**: Desactiva la cuenta de un usuario mediante borrado lógico (solo Superadmin).
 * **`POST /api/login`**: Inicio de sesión (con protección de bloqueo por fuerza bruta y regeneración de sesión).
 * **`POST /api/logout`**: Cierre de sesión y limpieza de tokens *Remember Me*.
 
 ### Negocios
-* **`GET /api/businesses`**: Lista todos los negocios. Admite filtro `?owner_id=...` y paginación.
+* **`GET /api/businesses`**: Lista todos los negocios. Admite filtro `?owner_id=...` y paginación. Si es solicitado por un staff, devuelve sus negocios asignados.
 * **`POST /api/businesses`**: Crea un nuevo negocio (geolocaliza la dirección vía Nominatim de forma asíncrona con fallback).
 * **`PUT /api/businesses`**: Modifica un negocio existente (solo dueño o administrador).
-* **`DELETE /api/businesses?id=...`**: Elimina un negocio y limpia dependencias en cascada.
+* **`DELETE /api/businesses?id=...`**: Elimina un negocio y limpia dependencias en cascada (dueño o Superadmin).
 * **`POST /api/businesses-with-schedule`**: Crea un negocio y asocia múltiples horarios de atención en una transacción atómica.
 
 ### Servicios y Horarios
@@ -158,6 +167,11 @@ La API se encuentra expuesta bajo el prefijo `/api/` y mapea los siguientes endp
 * **`GET /api/notifications`**: Obtiene las últimas 40 notificaciones in-app del usuario.
 * **`PUT /api/notifications`**: Marca una o todas las notificaciones del usuario como leídas.
 
+### Administración de Personal (Staff)
+* **`GET /api/staff?business_id=...`**: Lista el personal autorizado de un negocio (dueño o administrador).
+* **`POST /api/staff`**: Agrega un usuario como personal de un negocio mediante correo electrónico (dueño o administrador).
+* **`DELETE /api/staff?business_id=...&user_id=...`**: Revoca el acceso de un empleado a un negocio (dueño o administrador).
+
 ---
 
 ## 🔒 Mejoras de Seguridad, Lógica y Rendimiento Recientes
@@ -168,5 +182,5 @@ La API se encuentra expuesta bajo el prefijo `/api/` y mapea los siguientes endp
 4. **Control de Acceso y Autorización Robusto:** Validación estricta de propiedad/rol en la creación de servicios, horarios y transiciones de estado de reservas (PUT/DELETE) previniendo que los clientes marquen sus propias citas como completadas o evadan el límite de cancelación de 24 horas.
 5. **Optimización de Base de Datos:** Corrección de la precedencia lógica del operador `OR` en búsquedas de servicios SQL y migración del autocompletado iterativo individual a actualizaciones masivas (bulk update) en peticiones GET.
 6. **Robustez y Portabilidad:** Soporte de timeouts y fallbacks para fallos de la API Nominatim, y soporte multiplataforma (Windows y Linux) para disparar el procesamiento de correos en segundo plano.
-
-
+7. **Delegación de Administradores de Negocio (Staff):** Los dueños de negocios pueden delegar a personal administrativo por correo electrónico. El personal de negocio (staff) puede gestionar citas, servicios y horarios, pero tiene restringida la alteración del branding y logo, la adición de nuevas sucursales y la eliminación de la sucursal activa.
+8. **Panel de Control Global (Superadmin):** Los administradores globales disponen de una interfaz en `/sistema` para gestionar todos los usuarios (promover roles a dueño o admin, desactivar cuentas) y moderar negocios (ver todos los registrados y eliminarlos si infringen normas).

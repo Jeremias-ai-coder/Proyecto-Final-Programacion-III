@@ -373,6 +373,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link d-inline-flex align-items-center gap-2" id="staff-tab" data-bs-toggle="pill" data-bs-target="#tab-staff" type="button" role="tab" aria-controls="tab-staff" aria-selected="false">
+                            <i class="bi bi-people"></i> Mi Personal
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link d-inline-flex align-items-center gap-2" id="settings-tab" data-bs-toggle="pill" data-bs-target="#tab-settings" type="button" role="tab" aria-controls="tab-settings" aria-selected="false">
                             <i class="bi bi-gear"></i> Configurar Negocio
                         </button>
@@ -502,6 +507,48 @@
                                         <tbody id="schedulesListTable">
                                             <tr>
                                                 <td colspan="4" class="text-center text-muted py-4">No hay horarios definidos.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pestaña 5: Mi Personal -->
+                <div class="tab-pane fade" id="tab-staff" role="tabpanel" aria-labelledby="staff-tab">
+                    <div class="row g-4">
+                        <div class="col-lg-4">
+                            <div class="card border-0 p-4 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-dark">Invitar Personal</h5>
+                                <p class="text-muted small mb-4">Ingresa el correo electrónico del usuario registrado para darle acceso de administrador (staff) a este negocio.</p>
+                                <form id="inviteStaffForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Correo Electrónico</label>
+                                        <input type="email" name="staffEmail" class="form-control" placeholder="usuario@correo.com" required>
+                                    </div>
+                                    <button class="btn btn-primary w-100 fw-bold shadow-sm" type="submit">Agregar al Personal</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8">
+                            <div class="card border-0 p-4 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-dark">Personal con Acceso</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th scope="col" style="border-top-left-radius: 8px;">ID</th>
+                                                <th scope="col">Nombre</th>
+                                                <th scope="col">Email</th>
+                                                <th scope="col" style="border-top-right-radius: 8px; text-align: center; width: 120px;">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="staffListTable">
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted py-4">No hay personal registrado en este negocio.</td>
                                             </tr>
                                         </tbody>
                                     </table>

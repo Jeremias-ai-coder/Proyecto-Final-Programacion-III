@@ -23,8 +23,8 @@ const apiUrl = pageBasePath + '/api';
 const userId = localStorage.getItem('userId');
 const userRole = localStorage.getItem('userRole');
 
-if (!userId || (userRole !== 'owner' && userRole !== 'administrator')) {
-    alert('Acceso denegado. Debes iniciar sesión como dueño o administrador.');
+if (!userId || (userRole !== 'owner' && userRole !== 'administrator' && userRole !== 'staff')) {
+    alert('Acceso denegado. Debes iniciar sesión como dueño, administrador o personal de negocio.');
     window.location.href = pageBasePath + '/login';
 }
 
@@ -87,7 +87,7 @@ const dayNames = {
 // 3. CARGA DE NEGOCIOS DE LA API
 async function loadBusinessesFromServer() {
     let url = `${apiUrl}/businesses`;
-    if (userRole === 'owner') {
+    if (userRole === 'owner' || userRole === 'staff') {
         url += `?owner_id=${userId}`;
     }
     try {
@@ -109,9 +109,42 @@ async function initDashboard() {
         welcomeUser.innerText = `¡Hola, ${userName}!`;
     }
     if (roleBadge) {
-        const roleText = userRole === 'owner' ? 'Dueño de Negocio' : 'Administrador del Sistema';
+        let roleText = 'Usuario';
+        let badgeClass = 'badge bg-secondary mt-1 fs-6 px-3 py-2';
+        if (userRole === 'owner') {
+            roleText = 'Dueño de Negocio';
+            badgeClass = 'badge bg-success mt-1 fs-6 px-3 py-2';
+        } else if (userRole === 'administrator') {
+            roleText = 'Administrador del Sistema';
+            badgeClass = 'badge bg-dark mt-1 fs-6 px-3 py-2';
+        } else if (userRole === 'staff') {
+            roleText = 'Personal de Negocio (Staff)';
+            badgeClass = 'badge bg-info mt-1 fs-6 px-3 py-2';
+        }
         roleBadge.innerText = roleText;
-        roleBadge.className = userRole === 'owner' ? 'badge bg-success mt-1 fs-6 px-3 py-2' : 'badge bg-dark mt-1 fs-6 px-3 py-2';
+        roleBadge.className = badgeClass;
+    }
+
+    // Ocultar controles de dueño si es staff
+    if (userRole === 'staff') {
+        const staffTabBtn = document.getElementById('staff-tab');
+        if (staffTabBtn) staffTabBtn.style.display = 'none';
+        
+        // Deshabilitar campos de configuración del negocio
+        if (editBusinessForm) {
+            const inputs = editBusinessForm.querySelectorAll('input, textarea, button[type="submit"]');
+            inputs.forEach(input => {
+                input.disabled = true;
+            });
+        }
+        
+        // Ocultar botón de registrar otra sucursal
+        const addBranchBtn = document.querySelector('button[data-bs-target="#registerBusinessModal"]');
+        if (addBranchBtn) addBranchBtn.style.display = 'none';
+        
+        // Ocultar "Zona de Peligro"
+        const dangerZoneCard = document.querySelector('.card[style*="border-left: 4px solid #d93838"]');
+        if (dangerZoneCard) dangerZoneCard.style.display = 'none';
     }
 
     // B. Inicializar autocompletados con mapa
@@ -302,6 +335,7 @@ function switchBusiness(businessId) {
     // Renderizar tablas locales
     renderServicesTable(biz.services || []);
     renderSchedulesTable(biz.work_schedules || []);
+    loadStaff();
 
     // Cargar agenda del día
     loadAgenda();
@@ -468,6 +502,81 @@ function renderServicesTable(services) {
                     if (res.ok) {
                         alert('Servicio eliminado correctamente.');
                         await refreshBusinessesList();
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error de conexión con el servidor.');
+                }
+            }
+        });
+    });
+}
+
+// 9.5 GESTIÓN DE PERSONAL (STAFF)
+async function loadStaff() {
+    if (!currentBusinessId) return;
+    const staffListTable = document.getElementById('staffListTable');
+    if (!staffListTable) return;
+    
+    // Si el rol es staff, ocultamos la pestaña y salimos
+    if (userRole === 'staff') {
+        const staffTab = document.getElementById('staff-tab');
+        if (staffTab) staffTab.style.display = 'none';
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiUrl}/staff?business_id=${currentBusinessId}`);
+        if (!res.ok) throw new Error('Error al cargar personal');
+        const staff = await res.json();
+        renderStaffTable(staff);
+    } catch (e) {
+        console.error('Error loading staff:', e);
+        staffListTable.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Error al cargar personal del servidor.</td></tr>`;
+    }
+}
+
+function renderStaffTable(staff) {
+    const staffListTable = document.getElementById('staffListTable');
+    if (!staffListTable) return;
+    staffListTable.innerHTML = '';
+
+    if (staff.length === 0) {
+        staffListTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No hay personal registrado en este negocio.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    for (const s of staff) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${s.id}</td>
+            <td class="fw-bold text-dark">${s.name}</td>
+            <td>${s.email}</td>
+            <td class="text-center">
+                <button class="btn btn-outline-danger btn-sm btn-action-sm btn-delete-staff" data-id="${s.id}">
+                    Revocar
+                </button>
+            </td>
+        `;
+        staffListTable.appendChild(tr);
+    }
+
+    // Vincular botones de eliminar staff
+    staffListTable.querySelectorAll('.btn-delete-staff').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const staffUserId = e.target.dataset.id;
+            if (confirm('¿Estás seguro de que deseas revocar el acceso a este miembro del personal?')) {
+                try {
+                    const res = await fetch(`${apiUrl}/staff?business_id=${currentBusinessId}&user_id=${staffUserId}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (res.ok) {
+                        alert('Acceso revocado correctamente.');
+                        await loadStaff();
                     } else {
                         alert('Error: ' + result.message);
                     }
@@ -669,6 +778,42 @@ function renderTimeline(appointments) {
 
 // 13. CONFIGURAR EL ENVÍO DE FORMULARIOS
 function setupFormSubmits() {
+    // Formulario: Invitar Personal (Staff)
+    const inviteStaffForm = document.getElementById('inviteStaffForm');
+    if (inviteStaffForm) {
+        inviteStaffForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = inviteStaffForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const formData = new FormData(inviteStaffForm);
+            const payload = {
+                business_id: currentBusinessId,
+                email: formData.get('staffEmail')
+            };
+
+            try {
+                const res = await fetch(`${apiUrl}/staff`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert('Personal agregado con éxito.');
+                    inviteStaffForm.reset();
+                    await loadStaff();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error de conexión.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
     // A. Formulario: Guardar Servicio
     if (serviceForm) {
         serviceForm.addEventListener('submit', async (e) => {
@@ -839,6 +984,10 @@ function setupFormSubmits() {
     const btnDeleteBusinessDashboard = document.getElementById('btnDeleteBusinessDashboard');
     if (btnDeleteBusinessDashboard) {
         btnDeleteBusinessDashboard.addEventListener('click', async () => {
+            if (userRole === 'staff') {
+                alert('Acceso denegado. Solo el dueño del negocio puede eliminarlo.');
+                return;
+            }
             const biz = businesses.find(b => b.id == currentBusinessId);
             if (!biz) return;
 

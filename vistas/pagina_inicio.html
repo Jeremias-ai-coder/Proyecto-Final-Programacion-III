@@ -1159,6 +1159,26 @@ require_once __DIR__ . '/../src/bootstrap.php';
                                 <label class="form-check-label text-muted small" for="prefWhatsapp">Recibir recordatorios por WhatsApp</label>
                             </div>
                         </div>
+
+                        <div class="p-3 bg-light rounded-3 border border-light-subtle mt-4">
+                            <h6 class="fw-bold text-secondary small mb-3">Cambiar Contraseña</h6>
+                            <form id="changePasswordForm">
+                                <div class="mb-2">
+                                    <label class="form-label fw-semibold text-muted small mb-1">Contraseña Actual</label>
+                                    <input type="password" class="form-control" id="changePasswordOld" placeholder="Contraseña actual" required style="border-radius: 8px;">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label fw-semibold text-muted small mb-1">Nueva Contraseña</label>
+                                    <input type="password" class="form-control" id="changePasswordNew" placeholder="Mínimo 6 caracteres" required style="border-radius: 8px;">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted small mb-1">Confirmar Nueva Contraseña</label>
+                                    <input type="password" class="form-control" id="changePasswordConfirm" placeholder="Repita la nueva contraseña" required style="border-radius: 8px;">
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm fw-bold w-100 py-2" type="submit" id="btnChangePassword" style="border-radius: 8px;">Actualizar Contraseña</button>
+                            </form>
+                            <div id="changePasswordMessage" class="alert d-none py-2 mt-2 text-center small" role="alert"></div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -51,8 +51,27 @@ if ($path === '/login') {
     return;
 }
 
+if ($path === '/recuperar-clave') {
+    require __DIR__ . '/../vistas/recuperar_clave.html';
+    return;
+}
+
+if ($path === '/restablecer-clave') {
+    require __DIR__ . '/../vistas/restablecer_clave.html';
+    return;
+}
+
 if ($path === '/dashboard') {
     require __DIR__ . '/../vistas/administrador.html';
+    return;
+}
+
+if ($path === '/sistema' || $path === '/admin') {
+    if (($_SESSION['user_role'] ?? '') !== 'administrator') {
+        header('Location: ' . $basePath . '/login');
+        return;
+    }
+    require __DIR__ . '/../vistas/sistema.html';
     return;
 }
 

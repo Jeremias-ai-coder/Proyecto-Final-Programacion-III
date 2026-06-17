@@ -23,10 +23,11 @@ class ScheduleController
                 jsonResponse(['message' => 'El negocio no existe'], 400);
             }
 
-            // Validar propiedad del negocio
+            // Validar propiedad del negocio (dueño o staff)
             $userId = $_SESSION['user_id'] ?? null;
             $userRole = $_SESSION['user_role'] ?? null;
-            if ($business->owner_id !== $userId && $userRole !== 'administrator') {
+            $isStaff = \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $userId)->exists();
+            if ($business->owner_id !== $userId && !$isStaff && $userRole !== 'administrator') {
                 jsonResponse(['message' => 'No tienes permisos para agregar horarios a este negocio.'], 403);
             }
             if ($day < 1 || $day > 7) {
@@ -66,11 +67,12 @@ class ScheduleController
                 jsonResponse(['message' => 'Horario no encontrado'], 404);
             }
 
-            // Validar permisos
+            // Validar permisos (dueño o staff)
             $userId = $_SESSION['user_id'] ?? null;
             $userRole = $_SESSION['user_role'] ?? null;
             $business = Business::find($schedule->business_id);
-            if (!$business || ($business->owner_id !== $userId && $userRole !== 'administrator')) {
+            $isStaff = $business && \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $userId)->exists();
+            if (!$business || ($business->owner_id !== $userId && !$isStaff && $userRole !== 'administrator')) {
                 jsonResponse(['message' => 'No tienes permisos para eliminar este horario.'], 403);
             }
 

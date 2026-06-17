@@ -27,12 +27,15 @@ $routesMap = [
     'users'                    => \App\Controllers\UserController::class,
     'login'                    => \App\Controllers\AuthController::class,
     'logout'                   => \App\Controllers\AuthController::class,
+    'forgot-password'          => \App\Controllers\AuthController::class,
+    'reset-password'           => \App\Controllers\AuthController::class,
     'services'                 => \App\Controllers\ServiceController::class,
     'schedule'                 => \App\Controllers\ScheduleController::class,
     'agenda'                   => \App\Controllers\AgendaController::class,
     'reviews'                  => \App\Controllers\ReviewController::class,
     'appointments'             => \App\Controllers\AppointmentController::class,
     'notifications'            => \App\Controllers\NotificationController::class,
+    'staff'                    => \App\Controllers\StaffController::class,
 ];
 
 if (!isset($routesMap[$route])) {

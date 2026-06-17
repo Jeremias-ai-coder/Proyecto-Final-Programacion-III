@@ -17,7 +17,12 @@ class BusinessController
                     ->withCount('reviews');
                 if (isset($_GET['owner_id'])) {
                     $ownerId = sanitizeInt($_GET['owner_id']);
-                    $query->where('owner_id', $ownerId);
+                    $query->where(function($q) use ($ownerId) {
+                        $q->where('owner_id', $ownerId)
+                          ->orWhereHas('staff', function($sq) use ($ownerId) {
+                              $sq->where('users.id', $ownerId);
+                          });
+                    });
                 }
 
                 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : null;

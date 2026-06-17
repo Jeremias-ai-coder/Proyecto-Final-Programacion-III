@@ -220,9 +220,11 @@ class AppointmentController
             $sessionUserRole = $_SESSION['user_role'] ?? null;
             $business = Business::find($appointment->business_id);
             $isOwner = $business && $business->owner_id === $sessionUserId;
+            $isStaff = $business && \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $sessionUserId)->exists();
+            $isManager = $isOwner || $isStaff;
             $isClient = $appointment->user_id === $sessionUserId;
 
-            if (!$isOwner && !$isClient && $sessionUserRole !== 'administrator') {
+            if (!$isManager && !$isClient && $sessionUserRole !== 'administrator') {
                 jsonResponse(['message' => 'No autorizado para modificar este turno.'], 403);
             }
 
@@ -231,7 +233,7 @@ class AppointmentController
             }
 
             // Restricción de transiciones para clientes
-            if ($isClient && !$isOwner && $sessionUserRole !== 'administrator') {
+            if ($isClient && !$isManager && $sessionUserRole !== 'administrator') {
                 if ($status !== 'cancelled') {
                     jsonResponse(['message' => 'Los clientes solo pueden cancelar turnos.'], 403);
                 }
@@ -239,7 +241,7 @@ class AppointmentController
 
             // Validar restricción de 24 horas para cancelación
             if ($status === 'cancelled') {
-                if (!$isOwner && $sessionUserRole !== 'administrator') {
+                if (!$isManager && $sessionUserRole !== 'administrator') {
                     $dateStr = $appointment->date instanceof \DateTimeInterface ? $appointment->date->format('Y-m-d') : (string)$appointment->date;
                     $appointmentTime = strtotime($dateStr . ' ' . $appointment->time);
                     $now = time();
@@ -340,8 +342,10 @@ class AppointmentController
             $sessionUserRole = $_SESSION['user_role'] ?? null;
             $business = Business::find($appointment->business_id);
             $isOwner = $business && $business->owner_id === $sessionUserId;
+            $isStaff = $business && \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $sessionUserId)->exists();
+            $isManager = $isOwner || $isStaff;
 
-            if ($appointment->user_id !== $sessionUserId && !$isOwner && $sessionUserRole !== 'administrator') {
+            if ($appointment->user_id !== $sessionUserId && !$isManager && $sessionUserRole !== 'administrator') {
                 jsonResponse(['message' => 'No autorizado para cancelar este turno.'], 403);
             }
 
@@ -353,7 +357,7 @@ class AppointmentController
             }
 
             // Validar restricción de 24 horas de anticipación (solo aplica a clientes comunes, no al dueño ni administradores)
-            if (!$isOwner && $sessionUserRole !== 'administrator') {
+            if (!$isManager && $sessionUserRole !== 'administrator') {
                 $dateStr = $appointment->date instanceof \DateTimeInterface ? $appointment->date->format('Y-m-d') : (string)$appointment->date;
                 $appointmentTime = strtotime($dateStr . ' ' . $appointment->time);
                 $now = time();

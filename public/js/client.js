@@ -396,13 +396,15 @@ async function init() {
                     }
                     
                     let roleLabel = 'Cliente';
-                    if (u.role === 'owner') roleLabel = 'Dueño de Negocio';
-                    else if (u.role === 'administrator') roleLabel = 'Administrador';
+                    const resolvedRole = userRole || u.role;
+                    if (resolvedRole === 'owner') roleLabel = 'Dueño de Negocio';
+                    else if (resolvedRole === 'administrator') roleLabel = 'Administrador';
+                    else if (resolvedRole === 'staff') roleLabel = 'Personal de Negocio';
                     if (profileRole) profileRole.innerText = roleLabel;
 
                     // Opciones de rol
                     let roleOptions = '';
-                    if (u.role === 'owner') {
+                    if (resolvedRole === 'owner' || resolvedRole === 'staff') {
                         roleOptions = `
                             <li>
                                 <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" href="${pageBasePath}/dashboard">
@@ -410,11 +412,11 @@ async function init() {
                                         <path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v1.384l7.614 2.03a1.5 1.5 0 0 0 .772 0L16 5.884V4.5A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1h-3zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5z"/>
                                         <path d="M0 12.5A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5V6.85L8.129 8.947a.5.5 0 0 1-.258 0L0 6.85v5.65z"/>
                                     </svg>
-                                    Gestionar mis negocios
+                                    ${resolvedRole === 'staff' ? 'Panel de Empleado' : 'Gestionar mis negocios'}
                                 </a>
                             </li>
                         `;
-                    } else if (u.role === 'administrator') {
+                    } else if (resolvedRole === 'administrator') {
                         roleOptions = `
                             <li>
                                 <a class="dropdown-item py-2 fw-semibold text-danger d-flex align-items-center gap-2" href="${pageBasePath}/dashboard">
@@ -1803,6 +1805,72 @@ async function init() {
                 console.error('Error al guardar preferencias de WhatsApp:', err);
                 alert('Error de conexión.');
                 prefWhatsapp.checked = !prefWhatsapp.checked;
+            }
+        });
+    }
+
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const changePasswordOld = document.getElementById('changePasswordOld');
+            const changePasswordNew = document.getElementById('changePasswordNew');
+            const changePasswordConfirm = document.getElementById('changePasswordConfirm');
+            const changePasswordMessage = document.getElementById('changePasswordMessage');
+            const btnChangePassword = document.getElementById('btnChangePassword');
+
+            if (!changePasswordOld || !changePasswordNew || !changePasswordConfirm || !changePasswordMessage || !btnChangePassword) return;
+
+            changePasswordMessage.classList.add('d-none');
+
+            const old_password = changePasswordOld.value;
+            const new_password = changePasswordNew.value;
+            const confirm_password = changePasswordConfirm.value;
+
+            if (new_password !== confirm_password) {
+                changePasswordMessage.textContent = 'La nueva contraseña y su confirmación no coinciden.';
+                changePasswordMessage.className = 'alert alert-danger py-2 mt-2 text-center small';
+                changePasswordMessage.classList.remove('d-none');
+                return;
+            }
+
+            if (new_password.length < 6) {
+                changePasswordMessage.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
+                changePasswordMessage.className = 'alert alert-danger py-2 mt-2 text-center small';
+                changePasswordMessage.classList.remove('d-none');
+                return;
+            }
+
+            btnChangePassword.disabled = true;
+            btnChangePassword.textContent = 'Actualizando...';
+
+            try {
+                const res = await fetch(`${apiUrl}/users`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password, new_password })
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    changePasswordMessage.textContent = '¡Contraseña actualizada con éxito!';
+                    changePasswordMessage.className = 'alert alert-success py-2 mt-2 text-center small';
+                    changePasswordMessage.classList.remove('d-none');
+                    changePasswordForm.reset();
+                } else {
+                    changePasswordMessage.textContent = result.message || 'No se pudo actualizar la contraseña.';
+                    changePasswordMessage.className = 'alert alert-danger py-2 mt-2 text-center small';
+                    changePasswordMessage.classList.remove('d-none');
+                }
+            } catch (err) {
+                console.error('Error al cambiar contraseña:', err);
+                changePasswordMessage.textContent = 'Error de conexión. Intente nuevamente.';
+                changePasswordMessage.className = 'alert alert-danger py-2 mt-2 text-center small';
+                changePasswordMessage.classList.remove('d-none');
+            } finally {
+                btnChangePassword.disabled = false;
+                btnChangePassword.textContent = 'Actualizar Contraseña';
             }
         });
     }

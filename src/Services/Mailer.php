@@ -215,6 +215,26 @@ class Mailer
     }
 
     /**
+     * Envía email para restablecer la contraseña.
+     */
+    public static function sendPasswordResetEmail($email, $name, $resetLink)
+    {
+        $subject = "Restablecer tu contraseña - Turnos Ya";
+        $html = self::getEmailTemplate("Restablecer tu contraseña", "
+            <p>Hola <strong>{$name}</strong>,</p>
+            <p>Hemos recibido una solicitud para restablecer tu contraseña en <strong>Turnos Ya</strong>. Puedes hacerlo haciendo clic en el siguiente botón:</p>
+            <div style='text-align: center; margin: 30px 0;'>
+                <a href='{$resetLink}' style='background-color: #009ee3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 10px rgba(0, 158, 227, 0.2);'>Restablecer Contraseña</a>
+            </div>
+            <p>Si el botón no funciona, puedes copiar y pegar el siguiente enlace en tu navegador:</p>
+            <p style='word-break: break-all; color: #009ee3;'><a href='{$resetLink}' style='color: #009ee3; text-decoration: none;'>{$resetLink}</a></p>
+            <p>Este enlace es de un solo uso y expirará en 1 hora.</p>
+            <p>Si no solicitaste este cambio, puedes ignorar este correo de forma segura y tu contraseña seguirá siendo la misma.</p>
+        ");
+        return self::queueEmail($email, $name, $subject, $html);
+    }
+
+    /**
      * Encola el correo electrónico en la base de datos y dispara el ejecutor.
      */
     private static function queueEmail($to, $toName, $subject, $htmlContent)

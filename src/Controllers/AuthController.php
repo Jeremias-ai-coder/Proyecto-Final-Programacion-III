@@ -32,12 +32,20 @@ class AuthController
                     jsonResponse(['message' => 'Correo electrónico o contraseña incorrectos'], 401);
                 }
 
+                $role = $user->role;
+                if ($role === 'client') {
+                    $isStaff = \App\Models\BusinessStaff::where('user_id', $user->id)->exists();
+                    if ($isStaff) {
+                        $role = 'staff';
+                    }
+                }
+
                 $limiter->resetAttempts($email);
 
                 session_regenerate_id(true);
 
                 $_SESSION['user_id'] = $user->id;
-                $_SESSION['user_role'] = $user->role;
+                $_SESSION['user_role'] = $role;
                 $_SESSION['user_name'] = $user->name;
                 $_SESSION['created_time'] = time();
                 $_SESSION['last_activity'] = time();
@@ -81,7 +89,7 @@ class AuthController
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role,
+                    'role' => $role,
                 ]);
             }
         }
@@ -115,6 +123,108 @@ class AuthController
                 }
                 session_destroy();
                 jsonResponse(['message' => 'Sesión cerrada']);
+            }
+        }
+
+        if ($route === 'forgot-password') {
+            if ($method === 'POST') {
+                $email = sanitizeString($input['email'] ?? '');
+
+                if ($email === '') {
+                    jsonResponse(['message' => 'El correo electrónico es obligatorio.'], 400);
+                }
+
+                if (!validateEmail($email)) {
+                    jsonResponse(['message' => 'El formato del correo electrónico es inválido.'], 400);
+                }
+
+                $user = User::where('email', $email)->first();
+                if (!$user) {
+                    jsonResponse(['message' => 'Si el correo electrónico coincide con una cuenta activa, recibirás un enlace de recuperación.']);
+                }
+
+                if ($user->deleted_at !== null) {
+                    jsonResponse(['message' => 'Esta cuenta se encuentra desactivada.'], 400);
+                }
+
+                try {
+                    $plainToken = bin2hex(random_bytes(32));
+                    $hashedToken = hash('sha256', $plainToken);
+                    $expiry = date('Y-m-d H:i:s', time() + 3600);
+
+                    \App\Models\PasswordResetToken::where('email', $email)->delete();
+
+                    \App\Models\PasswordResetToken::create([
+                        'email' => $email,
+                        'token' => $hashedToken,
+                        'expires_at' => $expiry
+                    ]);
+
+                    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $host = $_SERVER['HTTP_HOST'];
+                    
+                    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+                    $scriptDir = str_replace('\\', '/', $scriptDir);
+                    $basePath = '';
+                    if ($scriptDir !== '/') {
+                        $publicPos = strpos($scriptDir, '/public');
+                        if ($publicPos !== false) {
+                            $basePath = substr($scriptDir, 0, $publicPos);
+                        } else {
+                            $basePath = $scriptDir;
+                        }
+                    }
+                    $resetLink = $protocol . '://' . $host . $basePath . '/restablecer-clave?token=' . $plainToken;
+
+                    \App\Services\Mailer::sendPasswordResetEmail($user->email, $user->name, $resetLink);
+
+                    jsonResponse(['message' => 'Si el correo electrónico coincide con una cuenta activa, recibirás un enlace de recuperación.']);
+                } catch (\Exception $e) {
+                    jsonResponse(['message' => 'Hubo un error al procesar tu solicitud: ' . $e->getMessage()], 500);
+                }
+            }
+        }
+
+        if ($route === 'reset-password') {
+            if ($method === 'POST') {
+                $token = sanitizeString($input['token'] ?? '');
+                $password = isset($input['password']) ? trim((string)$input['password']) : '';
+
+                if ($token === '') {
+                    jsonResponse(['message' => 'El token de recuperación es obligatorio.'], 400);
+                }
+
+                if (!validatePassword($password)) {
+                    jsonResponse(['message' => 'La contraseña debe tener al menos 6 caracteres.'], 400);
+                }
+
+                $hashedToken = hash('sha256', $token);
+                $resetRecord = \App\Models\PasswordResetToken::where('token', $hashedToken)
+                    ->where('expires_at', '>', date('Y-m-d H:i:s'))
+                    ->first();
+
+                if (!$resetRecord) {
+                    jsonResponse(['message' => 'El enlace de recuperación es inválido o ha expirado.'], 400);
+                }
+
+                $user = User::where('email', $resetRecord->email)->first();
+                if (!$user) {
+                    jsonResponse(['message' => 'Usuario asociado a este token no encontrado.'], 404);
+                }
+
+                try {
+                    $user->password = password_hash($password, PASSWORD_DEFAULT);
+                    $user->save();
+
+                    $resetRecord->delete();
+
+                    $limiter = new LoginRateLimiter();
+                    $limiter->resetAttempts($user->email);
+
+                    jsonResponse(['message' => 'Tu contraseña ha sido restablecida con éxito.']);
+                } catch (\Exception $e) {
+                    jsonResponse(['message' => 'Ocurrió un error al restablecer la contraseña.'], 500);
+                }
             }
         }
     }

@@ -43,7 +43,8 @@ class ServiceController
             // Validar propiedad del negocio
             $userId = $_SESSION['user_id'] ?? null;
             $userRole = $_SESSION['user_role'] ?? null;
-            if ($business->owner_id !== $userId && $userRole !== 'administrator') {
+            $isStaff = \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $userId)->exists();
+            if ($business->owner_id !== $userId && !$isStaff && $userRole !== 'administrator') {
                 jsonResponse(['message' => 'No tienes permisos para agregar servicios a este negocio.'], 403);
             }
             if ($name === '') {
@@ -74,7 +75,8 @@ class ServiceController
             $userId = $_SESSION['user_id'] ?? null;
             $userRole = $_SESSION['user_role'] ?? null;
             $business = Business::find($service->business_id);
-            if (!$business || ($business->owner_id !== $userId && $userRole !== 'administrator')) {
+            $isStaff = $business && \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $userId)->exists();
+            if (!$business || ($business->owner_id !== $userId && !$isStaff && $userRole !== 'administrator')) {
                 jsonResponse(['message' => 'No tienes permisos para eliminar este servicio.'], 403);
             }
 
