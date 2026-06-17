@@ -271,6 +271,7 @@ async function init() {
     const navbarActions = document.getElementById('navbarActions');
     const businessSearch = document.getElementById('businessSearch');
     const businessGrid = document.getElementById('businessGrid');
+    const businessListSection = document.getElementById('businessListSection');
     const reserveSection = document.getElementById('reserveSection');
     const selectedBusinessName = document.getElementById('selectedBusinessName');
     const selectedBusinessId = document.getElementById('selectedBusinessId');
@@ -337,14 +338,16 @@ async function init() {
 
     // Función coordinada para cambiar de sección activa
     function showSection(sectionId) {
-        businessGrid.style.display = 'none';
+        if (businessListSection) businessListSection.style.display = 'none';
         reserveSection.style.display = 'none';
         myAppointmentsSection.style.display = 'none';
         if (userProfileSection) userProfileSection.style.display = 'none';
         
         if (sectionId === 'grid') {
-            businessGrid.style.display = ''; // Restaurar display de Bootstrap (.row = flex)
-            businessGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (businessListSection) {
+                businessListSection.style.display = ''; // Restaurar display de Bootstrap (.row = flex)
+                businessListSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         } else if (sectionId === 'appointments') {
             myAppointmentsSection.style.display = 'block';
             myAppointmentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
