@@ -99,6 +99,14 @@ class UserController
                 jsonResponse(['message' => 'Usuario no encontrado'], 404);
             }
 
+            if (isset($input['name'])) {
+                $name = sanitizeString($input['name']);
+                if ($name === '') {
+                    jsonResponse(['message' => 'El nombre completo es obligatorio.'], 400);
+                }
+                $user->name = $name;
+            }
+
             if (isset($input['email_notifications'])) {
                 $user->email_notifications = (int)$input['email_notifications'];
             }

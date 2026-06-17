@@ -91,10 +91,12 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 shadow-sm py-3">
         <div class="container d-flex justify-content-between align-items-center">
-            <a class="navbar-brand fw-bold fs-4 text-white d-flex align-items-center gap-2" href="#">
+            <a class="navbar-brand fw-bold fs-4 text-white d-flex align-items-center gap-2" href="/pagina-inicio">
                 <div class="logo-nav">TY</div> Panel de Control Global
             </a>
-            <button id="logoutBtn" class="btn btn-outline-danger btn-sm fw-semibold px-4" style="border-radius: 8px;">Cerrar Sesión</button>
+            <div class="d-flex align-items-center gap-3" id="navbarActions">
+                <!-- Inyectado dinámicamente por notifications.js -->
+            </div>
         </div>
     </nav>
 
@@ -237,6 +239,12 @@
                     return '';
                 }
             })();
+
+            // Cargar dinámicamente el archivo de notificaciones
+            const notifEl = document.createElement('script');
+            notifEl.src = pageBasePath + '/js/notifications.js?v=' + Date.now();
+            notifEl.defer = true;
+            document.body.appendChild(notifEl);
 
             const scriptEl = document.createElement('script');
             scriptEl.src = pageBasePath + '/js/sistema.js?v=' + Date.now();

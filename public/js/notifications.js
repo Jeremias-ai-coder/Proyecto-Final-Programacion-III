@@ -12,7 +12,7 @@
         try {
             const pathname = window.location.pathname;
             const parts = pathname.split('/');
-            const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+            const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api','sistema','admin'];
             while (parts.length > 0) {
                 const last = parts[parts.length - 1];
                 if (last === '' || knownPages.includes(last)) {
@@ -33,6 +33,10 @@
 
         init() {
             this.userId = this.userId || (window.userId ? window.userId : null);
+
+            // Dibujar barra de usuario (si existe el contenedor)
+            this.initNavbar();
+
             if (!this.userId) return;
 
             // Iniciar polling
@@ -41,6 +45,147 @@
 
             // Registrar eventos de interfaz
             this.bindEvents();
+        },
+
+        async initNavbar() {
+            const navbarActions = document.getElementById('navbarActions');
+            if (!navbarActions) return;
+
+            const userId = this.userId;
+            const userRole = localStorage.getItem('userRole');
+
+            if (!userId) {
+                navbarActions.innerHTML = `
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-light btn-sm fw-semibold text-primary px-3" href="${pageBasePath}/login">Iniciar Sesión</a>
+                        <a class="btn btn-outline-light btn-sm fw-semibold px-3" href="${pageBasePath}/registro">Crear Cuenta</a>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const res = await fetch(`${apiUrl}/users?id=${userId}`);
+                if (res.ok) {
+                    const u = await res.json();
+                    const initials = (u.name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+                    
+                    // Opciones de rol
+                    let roleOptions = '';
+                    const resolvedRole = userRole || u.role;
+                    if (resolvedRole === 'owner' || resolvedRole === 'staff') {
+                        roleOptions = `
+                            <li>
+                                <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" href="${pageBasePath}/dashboard">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-briefcase-fill text-muted" viewBox="0 0 16 16">
+                                        <path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v1.384l7.614 2.03a1.5 1.5 0 0 0 .772 0L16 5.884V4.5A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1h-3zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5z"/>
+                                        <path d="M0 12.5A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5V6.85L8.129 8.947a.5.5 0 0 1-.258 0L0 6.85v5.65z"/>
+                                    </svg>
+                                    ${resolvedRole === 'staff' ? 'Panel de Empleado' : 'Gestionar mis negocios'}
+                                </a>
+                            </li>
+                        `;
+                    } else if (resolvedRole === 'administrator') {
+                        roleOptions = `
+                            <li>
+                                <a class="dropdown-item py-2 fw-semibold text-danger d-flex align-items-center gap-2" href="${pageBasePath}/sistema">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-lock-fill text-danger" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99 1.679 2.196 3.7 3.28 4.016 3.43a.498.498 0 0 0 .376 0c.315-.15 2.337-1.034 4.016-3.43 1.678-2.195 3.061-5.513 2.466-9.99a1.54 1.54 0 0 0-1.044-1.263 62.439 62.439 0 0 0-2.887-.87C9.843.266 8.69 0 8 0zm0 5a1.5 1.5 0 0 1 .5 2.915V9a.5.5 0 0 1-1 0V7.915A1.5 1.5 0 0 1 8 5z"/>
+                                    </svg>
+                                    Panel de Control
+                                </a>
+                            </li>
+                        `;
+                    } else {
+                        roleOptions = `
+                            <li>
+                                <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2" href="${pageBasePath}/crear-negocio">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill text-muted" viewBox="0 0 16 16">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                    </svg>
+                                    Registrar mi negocio
+                                </a>
+                            </li>
+                        `;
+                    }
+
+                    navbarActions.innerHTML = `
+                        <!-- Dropdown de Notificaciones -->
+                        <div class="dropdown me-2 position-relative">
+                            <button class="btn btn-link text-white p-1 position-relative border-0 shadow-none text-decoration-none" type="button" id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false" style="display: flex; align-items: center; justify-content: center; height: 32px; width: 32px; border-radius: 50%; background: rgba(255,255,255,0.15);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16">
+                                    <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
+                                </svg>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notificationBadge" style="font-size: 0.6rem; padding: 0.25em 0.45em;">0</span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0 mt-2" id="notificationMenu" style="border-radius: 12px; width: 320px; max-height: 400px; overflow: hidden; z-index: 1100;" aria-labelledby="notificationBell">
+                                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                                    <span class="fw-bold text-dark" style="font-size: 0.9rem;">Notificaciones</span>
+                                    <button class="btn btn-link text-primary p-0 btn-sm text-decoration-none fw-semibold" id="btnMarkAllRead" style="font-size: 0.8rem;">Marcar leídas</button>
+                                </div>
+                                <div id="notificationList" style="max-height: 320px; overflow-y: auto;">
+                                    <div class="text-center py-4 text-muted small">Cargando notificaciones...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dropdown">
+                            <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center gap-2 p-0 border-0 shadow-none" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="user-avatar-circle-nav">${initials || 'U'}</div>
+                                <span class="fw-semibold small d-none d-sm-inline">${u.name}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-2" aria-labelledby="userMenuButton" style="border-radius: 12px; min-width: 210px; z-index: 1100;">
+                                <li>
+                                    <div class="px-3 py-2 text-truncate" style="max-width: 210px;">
+                                        <div class="fw-bold text-dark small" style="line-height: 1.2;">${u.name}</div>
+                                        <span class="text-muted" style="font-size: 0.75rem;">${u.email}</span>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <button class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 border-0 bg-transparent text-start w-100" id="btnNavbarGoToProfile">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-fill text-muted" viewBox="0 0 16 16">
+                                            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                                        </svg>
+                                        Mi Perfil
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 border-0 bg-transparent text-start w-100" id="btnNavbarGoToAppointments">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-check-fill text-muted" viewBox="0 0 16 16">
+                                            <path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4V.5zM16 14a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V5h16v9zm-5.146-5.146a.5.5 0 0 0-.708-.708L8 10.293 6.854 9.146a.5.5 0 1 0-.708.708L7.293 11l-1.147 1.146a.5.5 0 0 0 .708.708L8 11.707l1.146 1.147a.5.5 0 0 0 .708-.708L8.707 11l1.147-1.146z"/>
+                                        </svg>
+                                        Mis Turnos
+                                    </button>
+                                </li>
+                                ${roleOptions}
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <button class="dropdown-item py-2 fw-semibold text-danger d-flex align-items-center gap-2 border-0 bg-transparent text-start w-100" id="btnNavbarLogout">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right text-danger" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                                            <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                        </svg>
+                                        Cerrar Sesión
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    `;
+
+                    // Forzar carga de notificaciones ya que dibujamos el badge/lista
+                    this.fetchNotifications();
+                } else {
+                    if (res.status === 401 || res.status === 403) {
+                        localStorage.clear();
+                        window.location.reload();
+                        return;
+                    }
+                    navbarActions.innerHTML = `<span class="text-white fw-semibold small">Usuario desconocido</span>`;
+                }
+            } catch (error) {
+                console.error('Error rendering user navbar profile dropdown:', error);
+            }
         },
 
         bindEvents() {
@@ -62,6 +207,44 @@
                     e.preventDefault();
                     e.stopPropagation();
                     await this.markAllAsRead();
+                }
+
+                // Clic en "Mi Perfil"
+                const btnProfile = e.target.closest('#btnNavbarGoToProfile');
+                if (btnProfile) {
+                    e.preventDefault();
+                    const isClientPage = window.location.pathname.endsWith('/pagina-inicio') || window.location.pathname.endsWith('/client');
+                    if (isClientPage && typeof window.showSection === 'function') {
+                        window.showSection('profile');
+                    } else {
+                        window.location.href = `${pageBasePath}/pagina-inicio?section=profile`;
+                    }
+                }
+
+                // Clic en "Mis Turnos"
+                const btnAppointments = e.target.closest('#btnNavbarGoToAppointments');
+                if (btnAppointments) {
+                    e.preventDefault();
+                    const isClientPage = window.location.pathname.endsWith('/pagina-inicio') || window.location.pathname.endsWith('/client');
+                    if (isClientPage && typeof window.showSection === 'function') {
+                        window.showSection('appointments');
+                    } else {
+                        window.location.href = `${pageBasePath}/pagina-inicio?section=appointments`;
+                    }
+                }
+
+                // Clic en "Cerrar Sesión" del navbar
+                const btnLogout = e.target.closest('#btnNavbarLogout');
+                if (btnLogout) {
+                    e.preventDefault();
+                    try {
+                        await fetch(`${apiUrl}/logout`, { method: 'POST' });
+                    } catch (err) {
+                        console.error('Error closing session on server', err);
+                    }
+                    localStorage.clear();
+                    alert('Sesión cerrada con éxito.');
+                    window.location.href = `${pageBasePath}/pagina-inicio`;
                 }
             });
         },
@@ -377,6 +560,27 @@
         }
         #notificationMenu::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
+        }
+        .user-avatar-circle-nav {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            color: #009ee3;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+            transition: transform 0.15s ease;
+        }
+        .user-avatar-circle-nav:hover {
+            transform: scale(1.05);
+        }
+        .dropdown-menu .dropdown-item:active {
+            background-color: #009ee3 !important;
         }
     `;
     document.head.appendChild(style);

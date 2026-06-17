@@ -194,7 +194,7 @@ async function initDashboard() {
             }
             localStorage.clear();
             alert('Sesión cerrada correctamente.');
-            window.location.href = pageBasePath + '/login';
+            window.location.href = pageBasePath + '/pagina-inicio';
         });
     }
 
