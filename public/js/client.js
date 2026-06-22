@@ -6,7 +6,7 @@ const pageBasePath = (function() {
     try {
         const pathname = window.location.pathname;
         const parts = pathname.split('/');
-        const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api'];
+        const knownPages = ['pagina-inicio','pagina_inicio.html','pagina_inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api','vistas'];
         while (parts.length > 0) {
             const last = parts[parts.length - 1];
             if (last === '' || knownPages.includes(last)) {
@@ -95,7 +95,11 @@ function renderBusinessCards(items) {
     }
     
     if (!items.length) {
-        grid.innerHTML = '<div class="col-12"><div class="alert alert-info text-center py-4">No se encontraron negocios dentro del rango seleccionado.</div></div>';
+        const proximityActive = localStorage.getItem('proximityActive') === '1';
+        const msg = proximityActive 
+            ? 'No se encontraron negocios dentro del rango seleccionado.'
+            : 'No se encontraron negocios registrados.';
+        grid.innerHTML = `<div class="col-12"><div class="alert alert-info text-center py-4">${msg}</div></div>`;
         return;
     }
     
