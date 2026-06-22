@@ -8,8 +8,17 @@ La arquitectura de la aplicación está diseñada bajo el estándar profesional 
 
 ```text
 Proyecto Turnos Ya/
-├── database/                # Base de Datos
-│   └── schema.sql           # Script de creación de tablas MySQL
+├── database/                # Base de Datos y Scripts de Migración
+│   ├── schema.sql           # Script de creación de tablas MySQL
+│   ├── add_business_staff_table.php
+│   ├── add_coordinates_to_businesses.php
+│   ├── add_email_notifications_to_users.php
+│   ├── add_password_reset_tokens_table.php
+│   ├── add_whatsapp_to_users.php
+│   ├── create_notifications_table.php
+│   ├── update_remember_tokens.php
+│   ├── update_schema.php
+│   └── update_schema_v2.php
 ├── public/                  # DocumentRoot (Punto de acceso público seguro)
 │   ├── js/                  # Lógica frontend interactiva (ES6 Vanilla JS)
 │   │   ├── client.js        # Vista de Clientes, reservas y turnos
@@ -20,7 +29,8 @@ Proyecto Turnos Ya/
 │   │   └── sistema.js       # Lógica del panel global Superadmin
 │   ├── .htaccess            # Reglas de redirección de Apache para XAMPP
 │   ├── api.php              # Enrutador y controlador de la API RESTful PHP
-│   └── index.php            # Index público principal
+│   ├── index.php            # Index público principal
+│   └── router.php           # Enrutador alternativo para pruebas con php -S
 ├── routes/                  # Enrutamiento Backend
 │   └── router.php           # Enrutador simple del servidor para HTML y APIs
 ├── src/                     # Núcleo de la Aplicación (Backend Principal)
@@ -29,10 +39,15 @@ Proyecto Turnos Ya/
 │   │   ├── AppointmentController.php
 │   │   ├── AuthController.php
 │   │   ├── BusinessController.php
+│   │   ├── MailQueueController.php
 │   │   ├── NotificationController.php
 │   │   ├── ReviewController.php
 │   │   ├── ScheduleController.php
+│   │   ├── SecurityLocksController.php
 │   │   ├── ServiceController.php
+│   │   ├── StaffController.php
+│   │   ├── SystemLogController.php
+│   │   ├── SystemStatsController.php
 │   │   └── UserController.php
 │   ├── Middleware/          # Capa de Filtros Intermedios (Pipeline)
 │   │   ├── Middleware.php
@@ -46,6 +61,7 @@ Proyecto Turnos Ya/
 │   │   ├── BusinessStaff.php  # Relación intermedia dueños-personal
 │   │   ├── MailQueue.php
 │   │   ├── Notification.php
+│   │   ├── PasswordResetToken.php
 │   │   ├── Review.php
 │   │   ├── Service.php
 │   │   ├── User.php
@@ -66,6 +82,8 @@ Proyecto Turnos Ya/
 │   ├── inicio.html          # Landing de bienvenida y acceso
 │   ├── login.html           # Inicio de sesión
 │   ├── registro.html        # Registro de usuarios
+│   ├── recuperar_clave.html # Formulario de recuperación de contraseña
+│   ├── restablecer_clave.html # Formulario para ingresar nueva contraseña
 │   ├── crear_negocio.html   # Wizard paso 1: Datos del negocio
 │   ├── agregar_horario.html # Wizard paso 2: Horarios de atención
 │   ├── pagina_inicio.html   # Turnero del Cliente e historial "Mis Turnos"
@@ -73,7 +91,7 @@ Proyecto Turnos Ya/
 │   └── sistema.html         # Panel de Control Global (Superadmin)
 ├── .env                     # Variables de configuración privada (MySQL)
 ├── composer.json            # Gestor de dependencias de PHP
-└── README.md                # Esta guía explicativa técnica
+└── README.md                # Guía explicativa técnica original
 ```
 
 ### 🎯 Beneficios de esta Organización
