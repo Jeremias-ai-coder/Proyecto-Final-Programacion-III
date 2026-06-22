@@ -17,35 +17,46 @@ class AppointmentController
     {
         if ($method === 'GET') {
             $userId = $_SESSION['user_id'] ?? null;
-            if (!$userId) {
-                jsonResponse(['message' => 'Inicie sesión para ver sus turnos.'], 401);
-            }
-            // Autocompletar turnos pasados del usuario de forma eficiente
-            $today = date('Y-m-d');
-            Appointment::where('user_id', $userId)
-                ->where('status', 'pending')
-                ->where('date', '<', $today)
-                ->update(['status' => 'completed']);
+            $userRole = $_SESSION['user_role'] ?? null;
 
-            $todayAppts = Appointment::where('user_id', $userId)
-                ->where('status', 'pending')
-                ->where('date', $today)
-                ->with('service')
-                ->get();
-            $now = time();
-            foreach ($todayAppts as $appt) {
-                $duration = $appt->service ? $appt->service->duration_minutes : 30;
-                $apptTime = strtotime($today . ' ' . $appt->time);
-                $endTime = strtotime("+{$duration} minutes", $apptTime);
-                if ($endTime < $now) {
-                    $appt->status = 'completed';
-                    $appt->save();
+            if (isset($_GET['global']) && $_GET['global'] == 1) {
+                if ($userRole !== 'administrator') {
+                    jsonResponse(['message' => 'No autorizado'], 403);
                 }
+                $query = Appointment::with(['business', 'service', 'user', 'review'])
+                    ->orderBy('date', 'desc')
+                    ->orderBy('time', 'desc');
+            } else {
+                if (!$userId) {
+                    jsonResponse(['message' => 'Inicie sesión para ver sus turnos.'], 401);
+                }
+                // Autocompletar turnos pasados del usuario de forma eficiente
+                $today = date('Y-m-d');
+                Appointment::where('user_id', $userId)
+                    ->where('status', 'pending')
+                    ->where('date', '<', $today)
+                    ->update(['status' => 'completed']);
+
+                $todayAppts = Appointment::where('user_id', $userId)
+                    ->where('status', 'pending')
+                    ->where('date', $today)
+                    ->with('service')
+                    ->get();
+                $now = time();
+                foreach ($todayAppts as $appt) {
+                    $duration = $appt->service ? $appt->service->duration_minutes : 30;
+                    $apptTime = strtotime($today . ' ' . $appt->time);
+                    $endTime = strtotime("+{$duration} minutes", $apptTime);
+                    if ($endTime < $now) {
+                        $appt->status = 'completed';
+                        $appt->save();
+                    }
+                }
+                $query = Appointment::with(['business', 'service', 'review'])
+                    ->where('user_id', $userId)
+                    ->orderBy('date', 'asc')
+                    ->orderBy('time', 'asc');
             }
-            $query = Appointment::with(['business', 'service', 'review'])
-                ->where('user_id', $userId)
-                ->orderBy('date', 'asc')
-                ->orderBy('time', 'asc');
 
             $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : null;
             $limit = isset($_GET['limit']) ? max(1, intval($_GET['limit'])) : null;

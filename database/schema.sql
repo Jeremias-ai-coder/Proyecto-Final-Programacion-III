@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS services (
     description TEXT,
     duration_minutes INT NOT NULL DEFAULT 30,
     price DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

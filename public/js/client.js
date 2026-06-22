@@ -2018,10 +2018,18 @@ async function init() {
 
     if (businessGrid) {
         businessGrid.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.btn-view-business');
-            if (!btn) return;
+            // Ignorar clicks en el botón de agendar turno para no abrir el modal
+            if (e.target.closest('.btn-select-business')) {
+                return;
+            }
 
-            const bid = parseInt(btn.dataset.businessId, 10);
+            const card = e.target.closest('.ml-card');
+            if (!card) return;
+
+            const btnView = card.querySelector('.btn-view-business');
+            if (!btnView) return;
+
+            const bid = parseInt(btnView.dataset.businessId, 10);
             const business = businesses.find(b => b.id === bid);
             if (!business) return;
 
@@ -2052,6 +2060,31 @@ async function init() {
                 `).join('');
             } else {
                 schedulesHtml = "<p class='text-muted small italic text-center py-2'>Este negocio no tiene horarios de atención configurados aún.</p>";
+            }
+
+            // Consultar servicios del negocio a la API
+            let servicesHtml = '';
+            try {
+                const services = await fetchServices(business.id);
+                if (services && services.length > 0) {
+                    servicesHtml = services.map(s => `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
+                            <div class="text-start">
+                                <span class="fw-semibold text-dark small d-block">${s.name}</span>
+                                ${s.description ? `<span class="text-muted" style="font-size: 0.75rem;">${s.description}</span>` : ''}
+                            </div>
+                            <div class="text-end ms-2">
+                                <span class="badge bg-light text-primary border border-primary-subtle py-1 px-2 rounded-pill small fw-bold">$${parseFloat(s.price).toFixed(2)}</span>
+                                <span class="text-muted d-block" style="font-size: 0.7rem;"><i class="bi bi-clock"></i> ${s.duration_minutes} min</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    servicesHtml = `<p class="text-muted small italic text-center py-4 my-auto">Este negocio no tiene servicios registrados aún.</p>`;
+                }
+            } catch (err) {
+                console.error("Error al cargar servicios:", err);
+                servicesHtml = `<p class="text-danger small text-center py-3">Error al cargar servicios.</p>`;
             }
 
             // Consultar reseñas reales del negocio a la API
@@ -2113,15 +2146,23 @@ async function init() {
                     </div>
                     
                     <div class="row g-4 mt-2">
-                        <div class="col-md-6">
-                            <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle d-flex flex-column">
                                 <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-2"><i class="bi bi-clock"></i> Horarios de Atención</h6>
-                                <div class="px-1">
+                                <div class="flex-grow-1 px-1" style="max-height: 250px; overflow-y: auto;">
                                     ${schedulesHtml}
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle d-flex flex-column">
+                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-2"><i class="bi bi-briefcase"></i> Servicios Ofrecidos</h6>
+                                <div class="flex-grow-1 px-1" style="max-height: 250px; overflow-y: auto;">
+                                    ${servicesHtml}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12 col-lg-4">
                             <div class="bg-light p-3 rounded-3 h-100 border border-light-subtle d-flex flex-column">
                                 <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-2"><i class="bi bi-star-fill text-warning"></i> Reseñas de Clientes</h6>
                                 <div class="flex-grow-1 px-1" style="max-height: 250px; overflow-y: auto;">

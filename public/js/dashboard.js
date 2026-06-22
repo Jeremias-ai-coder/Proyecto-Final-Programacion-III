@@ -117,6 +117,18 @@ async function initDashboard() {
         } else if (userRole === 'administrator') {
             roleText = 'Administrador del Sistema';
             badgeClass = 'badge bg-dark mt-1 fs-6 px-3 py-2';
+            
+            // Agregar un botón "Ir al Panel Global (SuperAdmin)" al lado de Cerrar Sesión
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn && !document.getElementById('btnGoGlobalPanel')) {
+                const btnGoGlobal = document.createElement('a');
+                btnGoGlobal.id = 'btnGoGlobalPanel';
+                btnGoGlobal.href = pageBasePath + '/sistema';
+                btnGoGlobal.className = 'btn btn-primary btn-sm fw-semibold px-4 py-2 me-2';
+                btnGoGlobal.style.borderRadius = '8px';
+                btnGoGlobal.innerText = 'Panel Global (SuperAdmin)';
+                logoutBtn.parentNode.insertBefore(btnGoGlobal, logoutBtn);
+            }
         } else if (userRole === 'staff') {
             roleText = 'Personal de Negocio (Staff)';
             badgeClass = 'badge bg-info mt-1 fs-6 px-3 py-2';
@@ -467,7 +479,7 @@ function renderServicesTable(services) {
     if (services.length === 0) {
         servicesListTable.innerHTML = `
             <tr>
-                <td colspan="4" class="text-center text-muted py-4">No hay servicios registrados para este negocio.</td>
+                <td colspan="5" class="text-center text-muted py-4">No hay servicios registrados para este negocio.</td>
             </tr>
         `;
         return;
@@ -475,6 +487,16 @@ function renderServicesTable(services) {
 
     for (const s of services) {
         const tr = document.createElement('tr');
+        
+        let statusBadge = '';
+        if (s.status === 'approved') {
+            statusBadge = '<span class="badge bg-success">Aprobado</span>';
+        } else if (s.status === 'rejected') {
+            statusBadge = '<span class="badge bg-danger">Rechazado</span>';
+        } else {
+            statusBadge = '<span class="badge bg-warning text-dark border border-warning-subtle">Pendiente</span>';
+        }
+
         tr.innerHTML = `
             <td>
                 <div class="fw-bold text-dark">${s.name}</div>
@@ -482,6 +504,7 @@ function renderServicesTable(services) {
             </td>
             <td>${s.duration_minutes} min</td>
             <td class="fw-bold text-primary">$${parseFloat(s.price).toFixed(2)}</td>
+            <td class="text-center">${statusBadge}</td>
             <td class="text-center">
                 <button class="btn btn-outline-danger btn-sm btn-action-sm btn-delete-service" data-id="${s.id}">
                     Eliminar

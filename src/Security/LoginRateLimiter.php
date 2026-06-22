@@ -73,6 +73,7 @@ class LoginRateLimiter
         }
 
         $data = [
+            'email' => strtolower(trim($email)),
             'attempts' => $attempts,
             'reset_time' => $resetTime,
             'locked_until' => $lockedUntil

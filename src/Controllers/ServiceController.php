@@ -22,6 +22,27 @@ class ServiceController
             if ($businessFilter) {
                 $query->where('business_id', $businessFilter);
             }
+
+            // Filtrado por permisos del usuario actual para visualización
+            $userId = $_SESSION['user_id'] ?? null;
+            $userRole = $_SESSION['user_role'] ?? null;
+
+            if ($userRole !== 'administrator') {
+                $isOwnerOrStaff = false;
+                if ($businessFilter && $userId) {
+                    $business = Business::find($businessFilter);
+                    if ($business) {
+                        $isStaff = \App\Models\BusinessStaff::where('business_id', $business->id)->where('user_id', $userId)->exists();
+                        if ($business->owner_id === $userId || $isStaff) {
+                            $isOwnerOrStaff = true;
+                        }
+                    }
+                }
+                if (!$isOwnerOrStaff) {
+                    $query->where('status', 'approved');
+                }
+            }
+
             jsonResponse($query->get());
         }
 
@@ -57,8 +78,38 @@ class ServiceController
                 'description' => $description,
                 'duration_minutes' => $duration,
                 'price' => $price,
+                'status' => ($userRole === 'administrator') ? 'approved' : 'pending',
             ]);
             jsonResponse($service, 201);
+        }
+
+        if ($method === 'PUT') {
+            $id = sanitizeInt($input['id'] ?? null);
+            $status = sanitizeString($input['status'] ?? '');
+
+            if (!$id) {
+                jsonResponse(['message' => 'Falta el id del servicio'], 400);
+            }
+            $service = Service::find($id);
+            if (!$service) {
+                jsonResponse(['message' => 'Servicio no encontrado'], 404);
+            }
+
+            // Validar permisos: sólo administradores pueden cambiar el status
+            $userRole = $_SESSION['user_role'] ?? null;
+            if ($userRole !== 'administrator') {
+                jsonResponse(['message' => 'No tienes permisos para modificar este servicio.'], 403);
+            }
+
+            if (!in_array($status, ['approved', 'rejected', 'pending'])) {
+                jsonResponse(['message' => 'Estado inválido'], 400);
+            }
+
+            $service->update([
+                'status' => $status
+            ]);
+
+            jsonResponse($service);
         }
 
         if ($method === 'DELETE') {

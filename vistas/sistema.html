@@ -152,6 +152,39 @@
                         <i class="bi bi-shop"></i> Negocios Registrados
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="services-tab" data-bs-toggle="pill" data-bs-target="#tab-services" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-briefcase"></i> Moderación de Servicios
+                        <span class="badge bg-danger rounded-pill ms-1" id="pendingServicesCount" style="display: none;">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="appointments-tab" data-bs-toggle="pill" data-bs-target="#tab-appointments" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-calendar3"></i> Turnos Globales
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="mail-queue-tab" data-bs-toggle="pill" data-bs-target="#tab-mail-queue" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-envelope"></i> Cola de Correos
+                        <span class="badge bg-warning text-dark rounded-pill ms-1" id="failedMailsCount" style="display: none;">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="logs-tab" data-bs-toggle="pill" data-bs-target="#tab-logs" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-terminal"></i> Logs de Sistema
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="stats-tab" data-bs-toggle="pill" data-bs-target="#tab-stats" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-bar-chart-line"></i> Estadísticas del Sistema
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-inline-flex align-items-center gap-2" id="security-tab" data-bs-toggle="pill" data-bs-target="#tab-security" type="button" role="tab" aria-selected="false">
+                        <i class="bi bi-shield-slash"></i> Consola de Seguridad
+                        <span class="badge bg-warning text-dark rounded-pill ms-1" id="lockedAccountsCount" style="display: none;">0</span>
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -209,6 +242,318 @@
                             <tbody id="businessesTableBody">
                                 <tr>
                                     <td colspan="6" class="text-center text-muted py-4">Cargando negocios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 3: Moderación de Servicios -->
+            <div class="tab-pane fade" id="tab-services" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-dark mb-0">Servicios Pendientes de Aprobación</h5>
+                        <input type="text" id="serviceSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre o negocio..." style="max-width: 250px; border-radius: 8px;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Servicio</th>
+                                    <th>Descripción</th>
+                                    <th>Negocio</th>
+                                    <th>Duración y Precio</th>
+                                    <th style="text-align: center; width: 220px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servicesTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">Cargando servicios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Pestaña 4: Turnos Globales -->
+            <div class="tab-pane fade" id="tab-appointments" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-dark mb-0">Listado Maestro de Turnos</h5>
+                        <input type="text" id="appointmentSearchInput" class="form-control form-control-sm" placeholder="Buscar por cliente, negocio o servicio..." style="max-width: 250px; border-radius: 8px;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Cliente</th>
+                                    <th>Negocio</th>
+                                    <th>Servicio</th>
+                                    <th>Fecha y Hora</th>
+                                    <th style="text-align: center; width: 120px;">Estado</th>
+                                    <th style="text-align: center; width: 120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appointmentsTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">Cargando turnos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 5: Cola de Correos -->
+            <div class="tab-pane fade" id="tab-mail-queue" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-dark mb-0">Registro y Cola de Correos</h5>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="mailSearchInput" class="form-control form-control-sm" placeholder="Buscar por destinatario o asunto..." style="max-width: 220px; border-radius: 8px;">
+                            <button id="btnClearProcessedMails" class="btn btn-outline-secondary btn-sm px-3" style="border-radius: 8px;">Limpiar procesados</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Destinatario</th>
+                                    <th>Asunto</th>
+                                    <th>Intentos</th>
+                                    <th>Última act.</th>
+                                    <th style="text-align: center; width: 120px;">Estado</th>
+                                    <th style="text-align: center; width: 220px;">Error / Detalle</th>
+                                    <th style="text-align: center; width: 120px;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mailQueueTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">Cargando cola de correos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 6: Logs de Sistema -->
+            <div class="tab-pane fade" id="tab-logs" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">Logs del Sistema y Correo</h5>
+                        <button id="btnRefreshLogs" class="btn btn-primary btn-sm px-3" style="border-radius: 8px;">
+                            <i class="bi bi-arrow-clockwise"></i> Actualizar Logs
+                        </button>
+                    </div>
+                    
+                    <ul class="nav nav-tabs mb-3" id="logTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="app-logs-tab" data-bs-toggle="tab" data-bs-target="#app-logs-pane" type="button" role="tab">Aplicación (`app.log`)</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="mail-logs-tab" data-bs-toggle="tab" data-bs-target="#mail-logs-pane" type="button" role="tab">Correos de Fallback (`mail.log`)</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="logTabContent">
+                        <div class="tab-pane fade show active" id="app-logs-pane" role="tabpanel">
+                            <pre id="appLogsConsole" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap;">Cargando logs de aplicación...</pre>
+                        </div>
+                        <div class="tab-pane fade" id="mail-logs-pane" role="tabpanel">
+                            <pre id="mailLogsConsole" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap;">Cargando logs de correo...</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 7: Estadísticas del Sistema -->
+            <div class="tab-pane fade" id="tab-stats" role="tabpanel">
+                <div class="row g-4 mb-4">
+                    <!-- Tarjeta de Usuarios por Rol -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 p-4 shadow-sm h-100">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-people text-primary me-2"></i>Usuarios por Rol</h5>
+                            <div class="d-flex flex-column gap-3">
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="fw-medium">Clientes</span>
+                                        <span class="fw-bold" id="statsClientsCount">0</span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-secondary" id="statsClientsProgress" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="fw-medium">Dueños de Negocio</span>
+                                        <span class="fw-bold" id="statsOwnersCount">0</span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-primary" id="statsOwnersProgress" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="fw-medium">Administradores</span>
+                                        <span class="fw-bold" id="statsAdminsCount">0</span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" id="statsAdminsProgress" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta de Desempeño de Turnos -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 p-4 shadow-sm h-100">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-calendar3 text-success me-2"></i>Eficiencia de Turnos</h5>
+                            <div class="d-flex flex-column gap-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Total de Turnos</span>
+                                    <span class="fw-bold fs-5" id="statsApptsTotal">0</span>
+                                </div>
+                                <hr class="my-1">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="text-warning fw-bold fs-5" id="statsApptsPending">0</div>
+                                        <div class="small text-muted">Pendientes</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-success fw-bold fs-5" id="statsApptsCompleted">0</div>
+                                        <div class="small text-muted">Completados</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-danger fw-bold fs-5" id="statsApptsCancelled">0</div>
+                                        <div class="small text-muted">Cancelados</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-center bg-light p-2 rounded">
+                                    <span class="small text-muted">Tasa de Concreción: </span>
+                                    <span class="fw-bold text-success" id="statsApptsSuccessRate">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta de Reputación y Servicios -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 p-4 shadow-sm h-100">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-star-fill text-warning me-2"></i>Calidad del Servicio</h5>
+                            <div class="d-flex flex-column justify-content-between h-100">
+                                <div class="text-center py-2">
+                                    <div class="display-5 fw-bold text-dark" id="statsAvgRating">0.0</div>
+                                    <div class="text-warning mb-2" id="statsStarsContainer"></div>
+                                    <div class="text-muted small">Promedio basado en <span id="statsReviewsCount">0</span> opiniones</div>
+                                </div>
+                                <div class="bg-light p-2 rounded d-flex justify-content-around text-center mt-3">
+                                    <div>
+                                        <div class="fw-bold text-success" id="statsServicesApproved">0</div>
+                                        <div class="small text-muted">Aprobados</div>
+                                    </div>
+                                    <div class="border-start"></div>
+                                    <div>
+                                        <div class="fw-bold text-warning" id="statsServicesPending">0</div>
+                                        <div class="small text-muted">Pendientes</div>
+                                    </div>
+                                    <div class="border-start"></div>
+                                    <div>
+                                        <div class="fw-bold text-danger" id="statsServicesRejected">0</div>
+                                        <div class="small text-muted">Rechazados</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Top 5 Negocios Activos -->
+                    <div class="col-lg-6">
+                        <div class="card border-0 p-4 shadow-sm">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-trophy text-warning me-2"></i>Top 5 Negocios con Más Reservas</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Posición</th>
+                                            <th>Negocio</th>
+                                            <th class="text-end">Reservas Totales</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="statsTopBusinessesTable">
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted py-4">No hay datos disponibles.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tamaño de Base de Datos -->
+                    <div class="col-lg-6">
+                        <div class="card border-0 p-4 shadow-sm">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-database text-info me-2"></i>Uso de Almacenamiento en Base de Datos</h5>
+                            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                                        <tr>
+                                            <th>Tabla</th>
+                                            <th class="text-end">Tamaño en Disco</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="statsDbSizesTable">
+                                        <tr>
+                                            <td colspan="2" class="text-center text-muted py-4">Cargando base de datos...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <span class="small text-muted">Tamaño Total: </span>
+                                <span class="fw-bold text-dark" id="statsDbTotalSize">0.00 MB</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 8: Consola de Seguridad -->
+            <div class="tab-pane fade" id="tab-security" role="tabpanel">
+                <div class="card border-0 p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0">Consola de Bloqueos de Seguridad</h5>
+                            <p class="text-muted small mb-0">Visualiza y desbloquea manualmente cuentas bloqueadas por exceso de intentos fallidos de inicio de sesión.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="securitySearchInput" class="form-control form-control-sm" placeholder="Buscar email..." style="max-width: 250px; border-radius: 8px;">
+                            <button id="btnRefreshSecurity" class="btn btn-outline-primary btn-sm px-3" style="border-radius: 8px;">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Cuenta / Email</th>
+                                    <th class="text-center">Intentos Fallidos</th>
+                                    <th>Último Intento</th>
+                                    <th>Estado del Bloqueo</th>
+                                    <th class="text-center" style="width: 150px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lockedAccountsTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">Cargando bloqueos de seguridad...</td>
                                 </tr>
                             </tbody>
                         </table>

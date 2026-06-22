@@ -36,6 +36,10 @@ $routesMap = [
     'appointments'             => \App\Controllers\AppointmentController::class,
     'notifications'            => \App\Controllers\NotificationController::class,
     'staff'                    => \App\Controllers\StaffController::class,
+    'mail-queue'               => \App\Controllers\MailQueueController::class,
+    'system-logs'              => \App\Controllers\SystemLogController::class,
+    'system-stats'             => \App\Controllers\SystemStatsController::class,
+    'security-locks'           => \App\Controllers\SecurityLocksController::class,
 ];
 
 if (!isset($routesMap[$route])) {

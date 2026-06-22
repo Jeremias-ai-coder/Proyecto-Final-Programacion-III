@@ -9,7 +9,7 @@ use App\Models\Business;
 class Service extends Model
 {
     protected $table = 'services';
-    protected $fillable = ['business_id', 'name', 'description', 'duration_minutes', 'price'];
+    protected $fillable = ['business_id', 'name', 'description', 'duration_minutes', 'price', 'status'];
     public $timestamps = false;
 
     public function business()

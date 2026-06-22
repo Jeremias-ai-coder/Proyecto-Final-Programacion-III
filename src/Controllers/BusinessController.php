@@ -12,9 +12,30 @@ class BusinessController
     {
         if ($route === 'businesses') {
             if ($method === 'GET') {
-                $query = Business::with(['owner', 'services', 'workSchedules'])
-                    ->withAvg('reviews', 'rating')
-                    ->withCount('reviews');
+                $userId = $_SESSION['user_id'] ?? null;
+                $userRole = $_SESSION['user_role'] ?? null;
+
+                $query = Business::with([
+                    'owner', 
+                    'services' => function($q) use ($userId, $userRole) {
+                        if ($userRole !== 'administrator') {
+                            $q->where(function($sq) use ($userId) {
+                                $sq->where('status', 'approved');
+                                if ($userId) {
+                                    $sq->orWhereHas('business', function($bq) use ($userId) {
+                                        $bq->where('owner_id', $userId)
+                                           ->orWhereHas('staff', function($sqq) use ($userId) {
+                                               $sqq->where('users.id', $userId);
+                                           });
+                                    });
+                                }
+                            });
+                        }
+                    }, 
+                    'workSchedules'
+                ])
+                ->withAvg('reviews', 'rating')
+                ->withCount('reviews');
                 if (isset($_GET['owner_id'])) {
                     $ownerId = sanitizeInt($_GET['owner_id']);
                     $query->where(function($q) use ($ownerId) {

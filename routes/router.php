@@ -67,6 +67,7 @@ if ($path === '/dashboard') {
 }
 
 if ($path === '/sistema' || $path === '/admin') {
+    require_once __DIR__ . '/../src/bootstrap.php';
     if (($_SESSION['user_role'] ?? '') !== 'administrator') {
         header('Location: ' . $basePath . '/login');
         return;
