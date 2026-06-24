@@ -582,6 +582,19 @@
         .dropdown-menu .dropdown-item:active {
             background-color: #009ee3 !important;
         }
+        @media (max-width: 767.98px) {
+            .dropdown-menu-end {
+                position: absolute !important;
+                top: 100% !important;
+                left: 50% !important;
+                right: auto !important;
+                transform: translate3d(-50%, 8px, 0px) !important;
+            }
+            #notificationMenu {
+                width: 290px !important;
+                max-width: calc(100vw - 24px) !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 
