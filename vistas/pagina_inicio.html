@@ -26,6 +26,17 @@ require_once __DIR__ . '/../src/bootstrap.php';
             box-shadow: 0 4px 12px rgba(0, 158, 227, 0.08);
         }
 
+        @media (min-width: 768px) {
+            .navbar-custom .container {
+                flex-wrap: nowrap !important;
+            }
+            .search-group {
+                max-width: 600px;
+                margin-left: 1.5rem;
+                margin-right: 1.5rem;
+            }
+        }
+
         .search-group {
             position: relative;
             background: #ffffff;
@@ -730,7 +741,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 
 <body>
     <nav class="navbar navbar-custom py-3 mb-4">
-        <div class="container d-flex flex-column flex-md-row align-items-center gap-3">
+        <div class="container d-flex flex-column flex-md-row flex-md-nowrap align-items-center gap-3">
             <a class="navbar-brand fw-bold fs-4 text-white mb-0 d-flex align-items-center gap-2" href="/pagina-inicio">
                 <div class="logo-nav">TY</div>Turnos Ya
             </a>

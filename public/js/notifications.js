@@ -112,7 +112,7 @@
                     navbarActions.innerHTML = `
                         <!-- Dropdown de Notificaciones -->
                         <div class="dropdown me-2 position-relative">
-                            <button class="btn btn-link text-white p-1 position-relative border-0 shadow-none text-decoration-none" type="button" id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false" style="display: flex; align-items: center; justify-content: center; height: 32px; width: 32px; border-radius: 50%; background: rgba(255,255,255,0.15);">
+                            <button class="btn btn-link text-white p-1 position-relative border-0 shadow-none text-decoration-none" type="button" id="notificationBell" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" style="display: flex; align-items: center; justify-content: center; height: 32px; width: 32px; border-radius: 50%; background: rgba(255,255,255,0.15);">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16">
                                     <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
                                 </svg>
@@ -130,7 +130,7 @@
                         </div>
 
                         <div class="dropdown">
-                            <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center gap-2 p-0 border-0 shadow-none" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center gap-2 p-0 border-0 shadow-none" type="button" id="userMenuButton" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                                 <div class="user-avatar-circle-nav">${initials || 'U'}</div>
                                 <span class="fw-semibold small d-none d-sm-inline">${u.name}</span>
                             </button>
@@ -583,16 +583,20 @@
             background-color: #009ee3 !important;
         }
         @media (max-width: 767.98px) {
+            #navbarActions .dropdown, 
+            #navbarActions .position-relative {
+                position: static !important;
+            }
+            #notificationMenu {
+                width: 320px !important;
+            }
             .dropdown-menu-end {
                 position: absolute !important;
                 top: 100% !important;
-                left: 50% !important;
-                right: auto !important;
-                transform: translate3d(-50%, 8px, 0px) !important;
-            }
-            #notificationMenu {
-                width: 290px !important;
+                left: auto !important;
+                right: 12px !important;
                 max-width: calc(100vw - 24px) !important;
+                transform: none !important;
             }
         }
     `;
