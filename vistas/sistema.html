@@ -101,10 +101,15 @@
     </nav>
 
     <div class="container pb-5">
-        <div class="row mb-4">
-            <div class="col-12 text-center text-md-start">
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-8 text-center text-md-start">
                 <h2 class="fw-bold text-dark">Administración del Sistema</h2>
-                <p class="text-muted">Gestión global de usuarios, sucursales y métricas operativas de la plataforma.</p>
+                <p class="text-muted mb-0">Gestión global de usuarios, sucursales y métricas operativas de la plataforma.</p>
+            </div>
+            <div class="col-md-4 text-center text-md-end mt-3 mt-md-0">
+                <a href="/pagina-inicio" class="btn btn-outline-primary fw-semibold px-4 py-2" style="border-radius: 8px;">
+                    <i class="bi bi-arrow-left-short fs-5 align-middle"></i> Volver al Menú Principal
+                </a>
             </div>
         </div>
 
@@ -595,6 +600,23 @@
             scriptEl.src = pageBasePath + '/js/sistema.js?v=' + Date.now();
             scriptEl.defer = true;
             document.body.appendChild(scriptEl);
+
+            // Corrige los destinos de los enlaces absolutos dinámicamente
+            if (pageBasePath) {
+                const correctLinks = () => {
+                    document.querySelectorAll('a[href^="/"]').forEach(el => {
+                        const href = el.getAttribute('href');
+                        if (!href.startsWith('//')) {
+                            el.setAttribute('href', pageBasePath + (href === '/' ? '' : href));
+                        }
+                    });
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', correctLinks);
+                } else {
+                    correctLinks();
+                }
+            }
         })();
     </script>
 </body>
