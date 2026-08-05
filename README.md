@@ -42,7 +42,7 @@ Una experiencia fluida para que el usuario encuentre su turno en segundos.
 Este proyecto es desarrollado e impulsado por:
 
 * **Jeremias Collaud**
-* **Santino Almeira**
+
 * **Emmanuel Roman**
 ---
 
