@@ -1,9 +1,9 @@
 // URL base de la API RESTful
-const pageBasePath = (function() {
+const pageBasePath = (function () {
     try {
         const pathname = window.location.pathname;
         const parts = pathname.split('/');
-        const knownPages = ['pagina-inicio','client','crear-negocio','agregar-horario','login','dashboard','registro','api','sistema','admin'];
+        const knownPages = ['pagina-inicio', 'client', 'crear-negocio', 'agregar-horario', 'login', 'dashboard', 'registro', 'api', 'sistema', 'admin'];
         while (parts.length > 0) {
             const last = parts[parts.length - 1];
             if (last === '' || knownPages.includes(last)) {
@@ -275,8 +275,8 @@ function updateKPIs() {
 function filterUsers(users, query) {
     if (!query) return users;
     const lowerQuery = query.toLowerCase();
-    return users.filter(u => 
-        (u.name && u.name.toLowerCase().includes(lowerQuery)) || 
+    return users.filter(u =>
+        (u.name && u.name.toLowerCase().includes(lowerQuery)) ||
         (u.email && u.email.toLowerCase().includes(lowerQuery)) ||
         (u.id && u.id.toString() === lowerQuery)
     );
@@ -298,7 +298,7 @@ function renderUsers(users) {
 
     for (const u of users) {
         const tr = document.createElement('tr');
-        
+
         let roleBadgeClass = 'badge badge-client';
         let roleText = 'Cliente';
         if (u.role === 'owner') {
@@ -336,7 +336,7 @@ function renderUsers(users) {
         select.addEventListener('change', async (e) => {
             const targetId = e.target.dataset.id;
             const newRole = e.target.value;
-            
+
             try {
                 const res = await fetch(`${apiUrl}/users`, {
                     method: 'PUT',
@@ -344,7 +344,7 @@ function renderUsers(users) {
                     body: JSON.stringify({ id: targetId, role: newRole })
                 });
                 const result = await res.json();
-                
+
                 if (res.ok) {
                     // Actualizar el estado local y recargar KPIs
                     const userIdx = allUsers.findIndex(u => u.id == targetId);
@@ -409,8 +409,8 @@ function renderUsers(users) {
 function filterBusinesses(businesses, query) {
     if (!query) return businesses;
     const lowerQuery = query.toLowerCase();
-    return businesses.filter(b => 
-        (b.name && b.name.toLowerCase().includes(lowerQuery)) || 
+    return businesses.filter(b =>
+        (b.name && b.name.toLowerCase().includes(lowerQuery)) ||
         (b.address && b.address.toLowerCase().includes(lowerQuery)) ||
         (b.id && b.id.toString() === lowerQuery)
     );
@@ -432,9 +432,9 @@ function renderBusinesses(businesses) {
 
     for (const b of businesses) {
         const tr = document.createElement('tr');
-        const initials = (b.name || '').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+        const initials = (b.name || '').split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
 
-        const logoHtml = b.logo_url 
+        const logoHtml = b.logo_url
             ? `<img src="${b.logo_url}" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover;" alt="${b.name}" onerror="this.outerHTML='<div class=&quot;d-flex align-items-center justify-content-center bg-light text-primary fw-bold rounded-circle border&quot; style=&quot;width: 38px; height: 38px;&quot;>${initials}</div>'">`
             : `<div class="d-flex align-items-center justify-content-center bg-light text-primary fw-bold rounded-circle border" style="width: 38px; height: 38px;">${initials || 'TY'}</div>`;
 
@@ -573,11 +573,11 @@ function filterAppointments(appointments, query) {
         const clientEmail = a.user && a.user.email ? a.user.email.toLowerCase() : '';
         const businessName = a.business && a.business.name ? a.business.name.toLowerCase() : '';
         const serviceName = a.service && a.service.name ? a.service.name.toLowerCase() : '';
-        return clientName.includes(lowerQuery) || 
-               clientEmail.includes(lowerQuery) || 
-               businessName.includes(lowerQuery) || 
-               serviceName.includes(lowerQuery) ||
-               (a.id && a.id.toString() === lowerQuery);
+        return clientName.includes(lowerQuery) ||
+            clientEmail.includes(lowerQuery) ||
+            businessName.includes(lowerQuery) ||
+            serviceName.includes(lowerQuery) ||
+            (a.id && a.id.toString() === lowerQuery);
     });
 }
 
@@ -590,12 +590,12 @@ function filterMailQueue(mails, query) {
         const recipientEmail = m.recipient_email ? m.recipient_email.toLowerCase() : '';
         const subject = m.subject ? m.subject.toLowerCase() : '';
         const errorMessage = m.error_message ? m.error_message.toLowerCase() : '';
-        return recipientName.includes(lowerQuery) || 
-               recipientEmail.includes(lowerQuery) || 
-               subject.includes(lowerQuery) || 
-               errorMessage.includes(lowerQuery) ||
-               (m.status && m.status.toLowerCase().includes(lowerQuery)) ||
-               (m.id && m.id.toString() === lowerQuery);
+        return recipientName.includes(lowerQuery) ||
+            recipientEmail.includes(lowerQuery) ||
+            subject.includes(lowerQuery) ||
+            errorMessage.includes(lowerQuery) ||
+            (m.status && m.status.toLowerCase().includes(lowerQuery)) ||
+            (m.id && m.id.toString() === lowerQuery);
     });
 }
 
@@ -615,7 +615,7 @@ function renderAppointments(appointments) {
 
     for (const a of appointments) {
         const tr = document.createElement('tr');
-        
+
         // Formatear estado con badges bonitos
         let statusBadge = '';
         if (a.status === 'pending') {
@@ -632,7 +632,7 @@ function renderAppointments(appointments) {
         const clientEmail = a.user ? a.user.email : 'N/D';
         const bizName = a.business ? a.business.name : 'N/D';
         const svcName = a.service ? a.service.name : 'N/D';
-        
+
         // Formatear fecha y hora
         let dateTimeStr = 'N/D';
         if (a.date && a.time) {
@@ -643,7 +643,7 @@ function renderAppointments(appointments) {
 
         // El admin puede cancelar turnos que no estén completados ni ya cancelados
         const isCancellable = a.status === 'pending';
-        const btnHtml = isCancellable 
+        const btnHtml = isCancellable
             ? `<button class="btn btn-outline-danger btn-sm px-3 btn-cancel-appointment" data-id="${a.id}" style="border-radius: 8px;">
                    Cancelar
                </button>`
@@ -707,7 +707,7 @@ function renderMailQueue(mails) {
 
     for (const m of mails) {
         const tr = document.createElement('tr');
-        
+
         let statusBadge = '';
         if (m.status === 'pending') {
             statusBadge = '<span class="badge bg-info text-dark">Pendiente</span>';
@@ -721,7 +721,7 @@ function renderMailQueue(mails) {
 
         // Acción de reintentar si falló o está pendiente con intentos
         const canRetry = m.status === 'failed' || (m.status === 'pending' && m.attempts > 0);
-        const actionHtml = canRetry 
+        const actionHtml = canRetry
             ? `<button class="btn btn-warning btn-sm px-3 btn-retry-mail text-dark fw-semibold" data-id="${m.id}" style="border-radius: 8px;">
                    Reintentar
                </button>`
@@ -782,7 +782,7 @@ function renderMailQueue(mails) {
                     body: JSON.stringify({ action: 'retry', id: mid })
                 });
                 const result = await res.json();
-                
+
                 if (res.ok) {
                     alert('El correo ha sido encolado y el procesador de envíos ha sido activado.');
                     await loadMailQueue();
@@ -837,14 +837,14 @@ async function loadSystemLogs() {
         if (res.ok) {
             const data = await res.json();
             if (appLogsConsole) {
-                appLogsConsole.innerText = data.app_logs && data.app_logs.length > 0 
-                    ? data.app_logs.join('\n') 
+                appLogsConsole.innerText = data.app_logs && data.app_logs.length > 0
+                    ? data.app_logs.join('\n')
                     : 'No hay logs de aplicación disponibles.';
                 appLogsConsole.scrollTop = appLogsConsole.scrollHeight;
             }
             if (mailLogsConsole) {
-                mailLogsConsole.innerText = data.mail_logs && data.mail_logs.length > 0 
-                    ? data.mail_logs.join('\n') 
+                mailLogsConsole.innerText = data.mail_logs && data.mail_logs.length > 0
+                    ? data.mail_logs.join('\n')
                     : 'No hay logs de correo disponibles.';
                 mailLogsConsole.scrollTop = mailLogsConsole.scrollHeight;
             }
@@ -870,7 +870,7 @@ function escapeHtml(text) {
         '"': '&quot;',
         "'": '&#039;'
     };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    return text.replace(/[&<>"']/g, function (m) { return map[m]; });
 }
 
 // NUEVAS FUNCIONES PARA ESTADÍSTICAS Y SEGURIDAD
@@ -896,7 +896,7 @@ function renderStats(data) {
     // 1. Users by Role
     const users = data.users || { total: 0, clients: 0, owners: 0, admins: 0 };
     const totalUsers = users.total || 1;
-    
+
     const clientPct = ((users.clients / totalUsers) * 100).toFixed(1);
     const ownerPct = ((users.owners / totalUsers) * 100).toFixed(1);
     const adminPct = ((users.admins / totalUsers) * 100).toFixed(1);
@@ -1051,7 +1051,7 @@ function renderSecurityLocks(locks) {
 
     locks.forEach(l => {
         const tr = document.createElement('tr');
-        
+
         let statusBadge = '';
         let buttonHtml = '';
 
@@ -1108,7 +1108,7 @@ function renderSecurityLocks(locks) {
 function filterSecurityLocks(locks, query) {
     if (!query) return locks;
     const lowerQuery = query.toLowerCase();
-    return locks.filter(l => 
+    return locks.filter(l =>
         (l.email && l.email.toLowerCase().includes(lowerQuery)) ||
         (l.id && l.id.toLowerCase().includes(lowerQuery))
     );
