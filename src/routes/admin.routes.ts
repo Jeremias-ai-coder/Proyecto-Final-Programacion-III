@@ -17,7 +17,7 @@ const requireAdmin = (req: any, res: any, next: any) => {
 // GET /api/v1/admin/users — Listar todos los usuarios (admin only)
 router.get('/users', authGuard, requireAdmin, async (req, res) => {
   const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true }
+    select: { id: true, name: true, email: true, role: true, phone: true }
   });
   res.json({ data: users, meta: { total: users.length } });
 });
