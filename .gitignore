@@ -1,6 +1,4 @@
+node_modules/
+dist/
 .env
-/vendor/
-/composer.phar
-*.log
-.system_generated/
-/test_route.php
+_legacy_php/
