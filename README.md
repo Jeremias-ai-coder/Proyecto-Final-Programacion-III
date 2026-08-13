@@ -44,6 +44,8 @@ Este proyecto es desarrollado e impulsado por:
 * **Jeremias Collaud**
 
 * **Emmanuel Roman**
+
+* **Miqueas Müller**
 ---
 
 ## Roadmap / Próximos Pasos
