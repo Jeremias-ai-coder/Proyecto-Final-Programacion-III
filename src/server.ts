@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes';
 import businessRoutes from './routes/business.routes';
 import appointmentRoutes from './routes/appointment.routes';
 import adminRoutes from './routes/admin.routes';
+import healthRoutes from './routes/health.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
@@ -15,6 +16,9 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/health', healthRoutes);
+app.use('/api/health', healthRoutes);
+app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', authRoutes);
 app.use('/api/v1/businesses', businessRoutes);
