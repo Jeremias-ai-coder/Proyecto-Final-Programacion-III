@@ -12,7 +12,7 @@ API RESTful para la plataforma de gestión y reserva de turnos en línea **Turno
 - **ORM / BD**: [Prisma ORM](https://www.prisma.io/) (v5.0) conectado a **MySQL**
 - **Autenticación y Seguridad**: [JSON Web Tokens (JWT)](https://jwt.io/), [bcrypt](https://www.npmjs.com/package/bcrypt), [Helmet](https://helmetjs.github.io/), [CORS](https://www.npmjs.com/package/cors)
 - **Validación de Datos**: [Zod](https://zod.dev/)
-- **Ejecución en Desarrollo**: `tsx` (TypeScript Execute / Watch)
+- **Ejecución en Desarrollo**: `tsx` (TypeScript Execute / Watch).
 
 ---
 
