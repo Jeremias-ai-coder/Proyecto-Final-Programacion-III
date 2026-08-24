@@ -1,114 +1,40 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-import { AppError } from '../middlewares/errorHandler';
+import { AuthService } from '../services/auth.service';
 import { registerSchema, loginSchema } from '../validators/auth.validator';
-
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret';
+import { AppError } from '../middlewares/errorHandler';
 
 export class AuthController {
-  static async register(req: Request, res: Response) {
+  constructor(private authService: AuthService) {}
+
+  register = async (req: Request, res: Response) => {
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
       const details = parsed.error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const { name, email, password } = parsed.data;
+    const result = await this.authService.register(parsed.data);
+    res.status(201).json(result);
+  };
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      throw new AppError('El email ya está en uso', 400);
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
-    });
-
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
-
-    res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        emailNotifications: user.emailNotifications,
-        whatsappNotifications: user.whatsappNotifications,
-        createdAt: null,
-        deletedAt: user.deletedAt
-      }
-    });
-  }
-
-  static async login(req: Request, res: Response) {
+  login = async (req: Request, res: Response) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       const details = parsed.error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const { email, password } = parsed.data;
+    const result = await this.authService.login(parsed.data);
+    res.json(result);
+  };
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw new AppError('Credenciales incorrectas', 401);
-    }
-
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      throw new AppError('Credenciales incorrectas', 401);
-    }
-
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        emailNotifications: user.emailNotifications,
-        whatsappNotifications: user.whatsappNotifications,
-        createdAt: null,
-        deletedAt: user.deletedAt
-      }
-    });
-  }
-
-  static async getMe(req: Request, res: Response) {
+  getMe = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    
-    if (!user) {
-      throw new AppError('Usuario no encontrado', 404);
-    }
+    const user = await this.authService.getMe(userId);
+    res.json(user);
+  };
 
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone,
-      emailNotifications: user.emailNotifications,
-      whatsappNotifications: user.whatsappNotifications,
-      createdAt: null,
-      deletedAt: user.deletedAt
-    });
-  }
-
-  static async updateProfile(req: Request, res: Response) {
+  updateProfile = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const { name, phone, emailNotifications, whatsappNotifications } = req.body;
 
@@ -118,12 +44,7 @@ export class AuthController {
     if (emailNotifications !== undefined) data.emailNotifications = emailNotifications;
     if (whatsappNotifications !== undefined) data.whatsappNotifications = whatsappNotifications;
 
-    const user = await prisma.user.update({ where: { id: userId }, data });
-
-    res.json({
-      id: user.id, name: user.name, email: user.email, role: user.role,
-      phone: user.phone, emailNotifications: user.emailNotifications,
-      whatsappNotifications: user.whatsappNotifications,
-    });
-  }
+    const user = await this.authService.updateProfile(userId, data);
+    res.json(user);
+  };
 }

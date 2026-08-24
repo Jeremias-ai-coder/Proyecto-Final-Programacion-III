@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { AuthController } from '../controllers/auth.controller';
+import { authController } from '../container';
 import { authGuard } from '../middlewares/authGuard';
 
 const router = Router();
 
-router.post('/login', AuthController.login);
-router.post('/register', AuthController.register);
-router.get('/me', authGuard, AuthController.getMe);
-router.patch('/profile', authGuard, AuthController.updateProfile);
+router.post('/login', authController.login);
+router.post('/register', authController.register);
+router.get('/me', authGuard, authController.getMe);
+router.patch('/profile', authGuard, authController.updateProfile);
 
 export default router;
