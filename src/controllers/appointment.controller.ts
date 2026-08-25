@@ -7,6 +7,34 @@ import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+const getDayOfWeek = (date: Date) => date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+const getTimeMinutes = (date: Date) => date.getUTCHours() * 60 + date.getUTCMinutes();
+
+const validateSchedule = async (businessId: number, serviceId: number, date: string, time: string) => {
+  const [service, schedules] = await Promise.all([
+    prisma.service.findUnique({ where: { id: serviceId } }),
+    prisma.schedule.findMany({ where: { businessId } })
+  ]);
+
+  if (!service || service.businessId !== businessId) {
+    throw new AppError('Servicio no encontrado para este negocio', 400);
+  }
+
+  const appointmentDate = new Date(date);
+  const appointmentTime = getTimeMinutes(new Date(time));
+  const isWithinSchedule = schedules.some(schedule => {
+    const startsAt = getTimeMinutes(schedule.startTime);
+    const endsAt = getTimeMinutes(schedule.endTime);
+    return schedule.dayOfWeek === getDayOfWeek(appointmentDate)
+      && appointmentTime >= startsAt
+      && appointmentTime + service.durationMinutes <= endsAt;
+  });
+
+  if (!isWithinSchedule) {
+    throw new AppError('El horario seleccionado está fuera del horario de atención', 400);
+  }
+};
+
 export class AppointmentController {
   static async holdAppointment(req: Request, res: Response) {
     const userId = (req as any).user.id;
@@ -18,6 +46,7 @@ export class AppointmentController {
     }
 
     const { businessId, serviceId, date, time } = parsed.data;
+    await validateSchedule(businessId, serviceId, date, time);
 
     const holdToken = crypto.randomUUID();
     // Expiración en 10 minutos
@@ -52,6 +81,9 @@ export class AppointmentController {
     }
 
     const { businessId, serviceId, date, time, holdToken } = parsed.data;
+    if (!holdToken) {
+      await validateSchedule(businessId, serviceId, date, time);
+    }
 
     if (holdToken) {
       // Buscar el appointment en hold

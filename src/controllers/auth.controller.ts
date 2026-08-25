@@ -16,7 +16,7 @@ export class AuthController {
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const { name, email, password } = parsed.data;
+    const { name, email, password, role } = parsed.data;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -29,6 +29,7 @@ export class AuthController {
         name,
         email,
         password: hashedPassword,
+        role,
       },
     });
 
