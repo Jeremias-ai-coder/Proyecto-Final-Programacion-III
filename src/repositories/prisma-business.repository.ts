@@ -5,21 +5,66 @@ export class PrismaBusinessRepository implements IBusinessRepository {
   constructor(private prisma: PrismaClient) {}
 
   async findAll(skip: number, take: number): Promise<[any[], number]> {
-    return Promise.all([
+    const [businesses, total] = await Promise.all([
       this.prisma.business.findMany({
         skip,
         take,
-        include: { owner: { select: { id: true, name: true, email: true } } }
+        include: {
+          owner: { select: { id: true, name: true, email: true } },
+          appointments: {
+            where: { review: { isNot: null } },
+            select: {
+              review: {
+                select: { rating: true }
+              }
+            }
+          }
+        }
       }),
       this.prisma.business.count()
     ]);
+
+    const formatted = businesses.map(b => {
+      const reviews = b.appointments?.map((a: any) => a.review).filter(Boolean) || [];
+      const count = reviews.length;
+      const avg = count > 0 ? Number((reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / count).toFixed(1)) : null;
+      return {
+        ...b,
+        rating: avg,
+        reviewCount: count
+      };
+    });
+
+    return [formatted, total];
   }
 
   async findById(id: number): Promise<any | null> {
-    return this.prisma.business.findUnique({
+    const b = await this.prisma.business.findUnique({
       where: { id },
-      include: { owner: { select: { id: true, name: true } } }
+      include: {
+        owner: { select: { id: true, name: true } },
+        appointments: {
+          where: { review: { isNot: null } },
+          select: {
+            review: {
+              select: { rating: true }
+            }
+          }
+        }
+      }
     });
+
+    if (!b) return null;
+
+    const reviews = b.appointments?.map((a: any) => a.review).filter(Boolean) || [];
+    const count = reviews.length;
+    const avg = count > 0 ? Number((reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / count).toFixed(1)) : null;
+
+    return {
+      ...b,
+      rating: avg,
+      reviewCount: count
+    };
   }
 
   async findByOwnerId(ownerId: number): Promise<Business[]> {

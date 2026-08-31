@@ -2,8 +2,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const result: any = await prisma.$queryRawUnsafe(`DESCRIBE businesses;`);
-  console.log('--- COLUMNAS DE LA TABLA businesses ---');
+  const result: any = await prisma.$queryRawUnsafe(`SHOW TABLES;`);
+  console.log('--- TABLAS EN LA BASE DE DATOS ---');
   console.log(result);
 }
 

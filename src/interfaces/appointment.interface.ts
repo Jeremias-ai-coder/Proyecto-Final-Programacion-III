@@ -24,14 +24,27 @@ export interface CancelAppointmentDTO {
   cancelledByUserId?: string;
 }
 
+export interface AppointmentFilterOptions {
+  userId?: number;
+  businessId?: number;
+  date?: string;
+  skip?: number;
+  take?: number;
+}
+
 export interface IAppointmentRepository {
   createHold(data: CreateHoldAppointmentDTO): Promise<Appointment>;
   createDirect(data: CreateDirectAppointmentDTO): Promise<Appointment>;
-  findById(id: number): Promise<Appointment | null>;
+  findById(id: number): Promise<any | null>;
   findByHoldToken(token: string): Promise<Appointment | null>;
   confirmAppointment(id: number): Promise<Appointment>;
+  updateStatus(id: number, status: AppointmentStatus): Promise<Appointment>;
   cancelAppointment(id: number, data: CancelAppointmentDTO): Promise<Appointment>;
-  findByUserId(userId: number, skip: number, take: number): Promise<[any[], number]>;
+  findAppointments(options: AppointmentFilterOptions): Promise<[any[], number]>;
   findAll(take?: number): Promise<any[]>;
   count(): Promise<number>;
+  autoCompleteExpiredAppointments(graceHours?: number): Promise<number>;
+  findBusySlotsByDate(businessId: number, date: string): Promise<string[]>;
+  isSlotBusy(businessId: number, date: Date, time: Date, excludeUserId?: number): Promise<boolean>;
+  clearPendingHolds(userId: number): Promise<void>;
 }
