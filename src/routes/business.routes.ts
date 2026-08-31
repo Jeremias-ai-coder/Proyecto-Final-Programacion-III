@@ -1,25 +1,29 @@
 import { Router } from 'express';
-import { BusinessController } from '../controllers/business.controller';
-import { ServiceController } from '../controllers/service.controller';
-import { ScheduleController } from '../controllers/schedule.controller';
+import { businessController, serviceController, scheduleController, reviewController, appointmentController } from '../container';
 import { authGuard } from '../middlewares/authGuard';
 
 const router = Router();
 
-router.get('/', BusinessController.getBusinesses);
-router.post('/', authGuard, BusinessController.createBusiness);
-router.get('/my', authGuard, BusinessController.getMyBusinesses);
-router.get('/:id', BusinessController.getBusiness);
-router.patch('/:id', authGuard, BusinessController.updateBusiness);
+router.get('/', businessController.getBusinesses);
+router.post('/', authGuard, businessController.createBusiness);
+router.get('/my', authGuard, businessController.getMyBusinesses);
+router.get('/:id', businessController.getBusiness);
+router.patch('/:id', authGuard, businessController.updateBusiness);
 
 // Servicios dependientes del negocio
-router.get('/:id/services', ServiceController.getServices);
-router.post('/:id/services', authGuard, ServiceController.createService);
-router.delete('/:id/services/:serviceId', authGuard, ServiceController.deleteService);
+router.get('/:id/services', serviceController.getServices);
+router.post('/:id/services', authGuard, serviceController.createService);
+router.delete('/:id/services/:serviceId', authGuard, serviceController.deleteService);
 
 // Horarios dependientes del negocio
-router.get('/:id/schedules', ScheduleController.getSchedules);
-router.post('/:id/schedules', authGuard, ScheduleController.createSchedule);
-router.delete('/:id/schedules/:scheduleId', authGuard, ScheduleController.deleteSchedule);
+router.get('/:id/schedules', scheduleController.getSchedules);
+router.post('/:id/schedules', authGuard, scheduleController.createSchedule);
+router.delete('/:id/schedules/:scheduleId', authGuard, scheduleController.deleteSchedule);
+
+// Horarios ocupados del negocio para una fecha
+router.get('/:id/busy-slots', appointmentController.getBusySlots);
+
+// Reseñas del negocio
+router.get('/:id/reviews', reviewController.getBusinessReviews);
 
 export default router;

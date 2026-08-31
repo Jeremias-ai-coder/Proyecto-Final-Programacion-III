@@ -1,39 +1,20 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AppError } from '../middlewares/errorHandler';
+import { ServiceService } from '../services/service.service';
 import { createServiceSchema } from '../validators/service.validator';
-
-const prisma = new PrismaClient();
+import { AppError } from '../middlewares/errorHandler';
 
 export class ServiceController {
-  static async getServices(req: Request, res: Response) {
+  constructor(private serviceService: ServiceService) {}
+
+  getServices = async (req: Request, res: Response) => {
     const businessId = parseInt(req.params.id);
+    const services = await this.serviceService.getServices(businessId);
+    res.json(services);
+  };
 
-    const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business) {
-      throw new AppError('Negocio no encontrado', 404);
-    }
-
-    const services = await prisma.service.findMany({
-      where: { businessId }
-    });
-
-    res.json(services); // Service lists don't always need pagination, or we return them simply here
-  }
-
-  static async createService(req: Request, res: Response) {
+  createService = async (req: Request, res: Response) => {
     const businessId = parseInt(req.params.id);
     const userId = (req as any).user.id;
-
-    // Check if business exists and user is owner
-    const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business) {
-      throw new AppError('Negocio no encontrado', 404);
-    }
-    
-    if (business.ownerId !== userId) {
-      throw new AppError('No tienes permiso para agregar servicios a este negocio', 403);
-    }
 
     const parsed = createServiceSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -41,28 +22,16 @@ export class ServiceController {
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const service = await prisma.service.create({
-      data: {
-        ...parsed.data,
-        businessId
-      }
-    });
-
+    const service = await this.serviceService.createService(businessId, userId, parsed.data);
     res.status(201).json(service);
-  }
+  };
 
-  static async deleteService(req: Request, res: Response) {
+  deleteService = async (req: Request, res: Response) => {
     const businessId = parseInt(req.params.id);
     const serviceId = parseInt(req.params.serviceId);
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
 
-    const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business) throw new AppError('Negocio no encontrado', 404);
-    if (business.ownerId !== userId && (req as any).user.role !== 'administrator') {
-      throw new AppError('No autorizado', 403);
-    }
-
-    await prisma.service.delete({ where: { id: serviceId } });
-    res.json({ message: 'Servicio eliminado correctamente' });
-  }
+    const result = await this.serviceService.deleteService(businessId, serviceId, user);
+    res.json(result);
+  };
 }

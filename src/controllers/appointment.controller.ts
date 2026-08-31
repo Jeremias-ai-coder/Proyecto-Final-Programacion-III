@@ -1,150 +1,103 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { AppointmentService } from '../services/appointment.service';
+import {
+  createAppointmentSchema,
+  holdAppointmentSchema,
+  cancelAppointmentSchema
+} from '../validators/appointment.validator';
 import { AppError } from '../middlewares/errorHandler';
-import { createAppointmentSchema, holdAppointmentSchema, cancelAppointmentSchema } from '../validators/appointment.validator';
-import { WebhookService } from '../services/webhook.service';
-import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 export class AppointmentController {
-  static async holdAppointment(req: Request, res: Response) {
+  constructor(private appointmentService: AppointmentService) {}
+
+  holdAppointment = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const parsed = holdAppointmentSchema.safeParse(req.body);
-    
+
     if (!parsed.success) {
       const details = parsed.error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const { businessId, serviceId, date, time } = parsed.data;
+    const result = await this.appointmentService.holdAppointment(userId, parsed.data);
+    res.json(result);
+  };
 
-    const holdToken = crypto.randomUUID();
-    // Expiración en 10 minutos
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    const appointment = await prisma.appointment.create({
-      data: {
-        businessId,
-        serviceId,
-        userId,
-        date: new Date(date),
-        time: new Date(time),
-        status: 'PENDING',
-        holdToken,
-        holdExpiresAt: expiresAt
-      }
-    });
-
-    res.json({
-      holdToken,
-      expiresAt: expiresAt.toISOString()
-    });
-  }
-
-  static async createAppointment(req: Request, res: Response) {
+  createAppointment = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const parsed = createAppointmentSchema.safeParse(req.body);
-    
+
     if (!parsed.success) {
       const details = parsed.error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const { businessId, serviceId, date, time, holdToken } = parsed.data;
-
-    if (holdToken) {
-      // Buscar el appointment en hold
-      const existingHold = await prisma.appointment.findFirst({
-        where: { holdToken, status: 'PENDING' }
-      });
-
-      if (!existingHold || (existingHold.holdExpiresAt && existingHold.holdExpiresAt < new Date())) {
-        throw new AppError('El bloqueo de turno ha expirado o es inválido', 400);
-      }
-
-      // Confirmar
-      const confirmed = await prisma.appointment.update({
-        where: { id: existingHold.id },
-        data: { status: 'CONFIRMED', holdToken: null, holdExpiresAt: null }
-      });
-
-      WebhookService.dispatch('appointment.created', businessId, confirmed);
-
-      return res.status(201).json(confirmed);
-    }
-
-    // Crear directo sin hold
-    const appointment = await prisma.appointment.create({
-      data: {
-        businessId,
-        serviceId,
-        userId,
-        date: new Date(date),
-        time: new Date(time),
-        status: 'CONFIRMED'
-      }
-    });
-
-    WebhookService.dispatch('appointment.created', businessId, appointment);
-
+    const appointment = await this.appointmentService.createAppointment(userId, parsed.data);
     res.status(201).json(appointment);
-  }
+  };
 
-  static async cancelAppointment(req: Request, res: Response) {
+  cancelAppointment = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const userId = (req as any).user.id;
-    
+    const user = (req as any).user;
+
     const parsed = cancelAppointmentSchema.safeParse(req.body);
     if (!parsed.success) {
       const details = parsed.error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
       throw new AppError('Datos inválidos', 400, details);
     }
 
-    const appointment = await prisma.appointment.findUnique({ where: { id } });
-    if (!appointment) {
-      throw new AppError('Turno no encontrado', 404);
+    const cancelled = await this.appointmentService.cancelAppointment(id, user.id, user.role, parsed.data);
+    res.json(cancelled);
+  };
+
+  updateStatus = async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const user = (req as any).user;
+    const { status } = req.body;
+
+    if (!status) {
+      throw new AppError('El campo status es requerido', 400);
     }
 
-    // Solo puede cancelar el dueño del negocio o el cliente (asumiremos cliente/admin)
-    const cancelled = await prisma.appointment.update({
-      where: { id },
-      data: {
-        status: 'CANCELLED',
-        cancelledReason: parsed.data.reason,
-        cancelledByUserId: parsed.data.cancelledByUserId || userId.toString()
-      }
-    });
+    const updated = await this.appointmentService.updateStatus(id, user.id, user.role, status);
+    res.json(updated);
+  };
 
-    WebhookService.dispatch('appointment.cancelled', appointment.businessId, cancelled);
-
-    res.json(cancelled);
-  }
-
-  static async getAppointments(req: Request, res: Response) {
-    const userId = (req as any).user.id;
+  getAppointments = async (req: Request, res: Response) => {
+    const user = (req as any).user;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : undefined;
+    const date = req.query.date as string | undefined;
 
-    const [appointments, total] = await Promise.all([
-      prisma.appointment.findMany({
-        where: { userId },
-        skip,
-        take: limit,
-        include: { service: true, business: true }
-      }),
-      prisma.appointment.count({ where: { userId } })
-    ]);
-
-    res.json({
-      data: appointments,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
+    const result = await this.appointmentService.getAppointments({
+      userId: user.id,
+      userRole: user.role,
+      page,
+      limit,
+      businessId,
+      date
     });
-  }
+    res.json(result);
+  };
+
+  getAppointmentById = async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const user = (req as any).user;
+
+    const appointment = await this.appointmentService.getAppointmentById(id, user.id, user.role);
+    res.json(appointment);
+  };
+
+  getBusySlots = async (req: Request, res: Response) => {
+    const businessId = parseInt(req.params.id || (req.query.businessId as string));
+    const date = req.query.date as string;
+
+    if (!businessId || isNaN(businessId)) {
+      throw new AppError('businessId es requerido', 400);
+    }
+
+    const result = await this.appointmentService.getBusySlots(businessId, date);
+    res.json(result);
+  };
 }
