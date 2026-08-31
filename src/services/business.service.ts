@@ -1,6 +1,7 @@
 import { IBusinessRepository, CreateBusinessDTO, UpdateBusinessDTO } from '../interfaces/business.interface';
 import { IUserRepository } from '../interfaces/user.interface';
 import { AppError } from '../middlewares/errorHandler';
+import { getPaginationOptions, createPaginatedResponse } from '../utils/pagination';
 
 export class BusinessService {
   constructor(
@@ -9,20 +10,10 @@ export class BusinessService {
   ) {}
 
   async getBusinesses(page: number = 1, limit: number = 10) {
-    const safeLimit = Math.min(limit, 200);
-    const skip = (page - 1) * safeLimit;
+    const pagination = getPaginationOptions(page, limit, 200);
+    const [businesses, total] = await this.businessRepo.findAll(pagination.skip, pagination.limit);
 
-    const [businesses, total] = await this.businessRepo.findAll(skip, safeLimit);
-
-    return {
-      data: businesses,
-      meta: {
-        total,
-        page,
-        limit: safeLimit,
-        totalPages: Math.ceil(total / safeLimit)
-      }
-    };
+    return createPaginatedResponse(businesses, total, pagination.page, pagination.limit);
   }
 
   async getBusinessById(id: number) {

@@ -3,12 +3,13 @@ import { prisma } from '../config/prisma';
 export class WebhookService {
   /**
    * Envía un evento webhook de forma asíncrona si el negocio tiene configurada una URL.
+   * Pertenece a la capa de infraestructura / integraciones externas.
    * @param event Nombre del evento (ej: 'appointment.created')
    * @param businessId ID del negocio
    * @param payload Datos a enviar (usualmente el Appointment)
    */
-  static async dispatch(event: string, businessId: number, payload: any) {
-    // Ejecutar en background para no bloquear la request principal
+  static async dispatch(event: string, businessId: number, payload: any): Promise<void> {
+    // Ejecutar en background para no bloquear la respuesta HTTP principal
     setTimeout(async () => {
       try {
         const business = await prisma.business.findUnique({
@@ -17,7 +18,7 @@ export class WebhookService {
         });
 
         if (!business || !business.webhookUrl) {
-          return; // El negocio no tiene webhooks configurados
+          return; // El negocio no tiene webhook configurado
         }
 
         const body = JSON.stringify({

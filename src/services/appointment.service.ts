@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import { IAppointmentRepository, CancelAppointmentDTO } from '../interfaces/appointment.interface';
-import { WebhookService } from './webhook.service';
+import { WebhookService } from '../infrastructure/webhook.service';
 import { AppError } from '../middlewares/errorHandler';
+import { getPaginationOptions, createPaginatedResponse } from '../utils/pagination';
 
 export class AppointmentService {
   constructor(private appointmentRepo: IAppointmentRepository) {}
@@ -68,17 +69,13 @@ export class AppointmentService {
   }
 
   async getAppointments(userId: number, page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
-    const [appointments, total] = await this.appointmentRepo.findByUserId(userId, skip, limit);
+    const pagination = getPaginationOptions(page, limit, 50);
+    const [appointments, total] = await this.appointmentRepo.findByUserId(
+      userId,
+      pagination.skip,
+      pagination.limit
+    );
 
-    return {
-      data: appointments,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
+    return createPaginatedResponse(appointments, total, pagination.page, pagination.limit);
   }
 }
