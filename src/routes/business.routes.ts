@@ -20,6 +20,8 @@ router.delete('/:id/services/:serviceId', authGuard, serviceController.deleteSer
 // Horarios dependientes del negocio
 router.get('/:id/schedules', scheduleController.getSchedules);
 router.post('/:id/schedules', authGuard, scheduleController.createSchedule);
+router.put('/:id/schedules/:scheduleId', authGuard, scheduleController.updateSchedule);
+router.patch('/:id/schedules/:scheduleId', authGuard, scheduleController.updateSchedule);
 router.delete('/:id/schedules/:scheduleId', authGuard, scheduleController.deleteSchedule);
 
 // Horarios ocupados del negocio para una fecha

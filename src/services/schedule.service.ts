@@ -2,6 +2,13 @@ import { IScheduleRepository, CreateScheduleDTO } from '../interfaces/schedule.i
 import { IBusinessRepository } from '../interfaces/business.interface';
 import { AppError } from '../middlewares/errorHandler';
 
+function parseTimeToDate(timeStr: string): Date {
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) {
+    return new Date(`1970-01-01T${timeStr.length === 5 ? timeStr + ':00' : timeStr}Z`);
+  }
+  return new Date(timeStr);
+}
+
 export class ScheduleService {
   constructor(
     private scheduleRepo: IScheduleRepository,
@@ -30,8 +37,35 @@ export class ScheduleService {
     return this.scheduleRepo.create({
       businessId,
       dayOfWeek: data.dayOfWeek,
-      startTime: new Date(data.startTime),
-      endTime: new Date(data.endTime)
+      startTime: parseTimeToDate(data.startTime),
+      endTime: parseTimeToDate(data.endTime)
+    });
+  }
+
+  async updateSchedule(
+    businessId: number,
+    scheduleId: number,
+    user: { id: number; role: string },
+    data: { dayOfWeek?: number; startTime?: string; endTime?: string }
+  ) {
+    const business = await this.businessRepo.findById(businessId);
+    if (!business) {
+      throw new AppError('Negocio no encontrado', 404);
+    }
+
+    if (business.ownerId !== user.id && user.role !== 'administrator') {
+      throw new AppError('No tienes permiso para modificar horarios de este negocio', 403);
+    }
+
+    const existingSchedule = await this.scheduleRepo.findById(scheduleId);
+    if (!existingSchedule || existingSchedule.businessId !== businessId) {
+      throw new AppError('Horario no encontrado en este negocio', 404);
+    }
+
+    return this.scheduleRepo.update(scheduleId, {
+      dayOfWeek: data.dayOfWeek,
+      startTime: data.startTime ? parseTimeToDate(data.startTime) : undefined,
+      endTime: data.endTime ? parseTimeToDate(data.endTime) : undefined
     });
   }
 

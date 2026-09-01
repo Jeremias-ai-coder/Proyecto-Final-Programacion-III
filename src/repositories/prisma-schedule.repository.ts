@@ -1,12 +1,16 @@
 import { PrismaClient, Schedule } from '@prisma/client';
-import { IScheduleRepository, CreateScheduleDTO } from '../interfaces/schedule.interface';
+import { IScheduleRepository, CreateScheduleDTO, UpdateScheduleDTO } from '../interfaces/schedule.interface';
 
 export class PrismaScheduleRepository implements IScheduleRepository {
   constructor(private prisma: PrismaClient) {}
 
   async findByBusinessId(businessId: number): Promise<Schedule[]> {
     return this.prisma.schedule.findMany({
-      where: { businessId }
+      where: { businessId },
+      orderBy: [
+        { dayOfWeek: 'asc' },
+        { startTime: 'asc' }
+      ]
     });
   }
 
@@ -24,6 +28,13 @@ export class PrismaScheduleRepository implements IScheduleRepository {
         startTime: data.startTime,
         endTime: data.endTime
       }
+    });
+  }
+
+  async update(id: number, data: UpdateScheduleDTO): Promise<Schedule> {
+    return this.prisma.schedule.update({
+      where: { id },
+      data
     });
   }
 
