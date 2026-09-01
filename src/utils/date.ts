@@ -84,7 +84,7 @@ export function combineDateAndTime(dateInput: Date | string, timeInput: Date | s
     seconds = timeInput.getUTCSeconds();
   }
 
-  return new Date(Date.UTC(year, month, day, hours, minutes, seconds));
+  return new Date(year, month, day, hours, minutes, seconds);
 }
 
 /**
