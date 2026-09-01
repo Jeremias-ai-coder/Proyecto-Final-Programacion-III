@@ -1,13 +1,7 @@
 import { IScheduleRepository, CreateScheduleDTO } from '../interfaces/schedule.interface';
 import { IBusinessRepository } from '../interfaces/business.interface';
 import { AppError } from '../middlewares/errorHandler';
-
-function parseTimeToDate(timeStr: string): Date {
-  if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) {
-    return new Date(`1970-01-01T${timeStr.length === 5 ? timeStr + ':00' : timeStr}Z`);
-  }
-  return new Date(timeStr);
-}
+import { parseTimeToUTC } from '../utils/date';
 
 export class ScheduleService {
   constructor(
@@ -37,8 +31,8 @@ export class ScheduleService {
     return this.scheduleRepo.create({
       businessId,
       dayOfWeek: data.dayOfWeek,
-      startTime: parseTimeToDate(data.startTime),
-      endTime: parseTimeToDate(data.endTime)
+      startTime: parseTimeToUTC(data.startTime),
+      endTime: parseTimeToUTC(data.endTime)
     });
   }
 
@@ -64,8 +58,8 @@ export class ScheduleService {
 
     return this.scheduleRepo.update(scheduleId, {
       dayOfWeek: data.dayOfWeek,
-      startTime: data.startTime ? parseTimeToDate(data.startTime) : undefined,
-      endTime: data.endTime ? parseTimeToDate(data.endTime) : undefined
+      startTime: data.startTime ? parseTimeToUTC(data.startTime) : undefined,
+      endTime: data.endTime ? parseTimeToUTC(data.endTime) : undefined
     });
   }
 

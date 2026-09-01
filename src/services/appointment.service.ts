@@ -4,7 +4,7 @@ import { IAppointmentRepository } from '../interfaces/appointment.interface';
 import { WebhookService } from '../infrastructure/webhook.service';
 import { AppError } from '../middlewares/errorHandler';
 import { getPaginationOptions, createPaginatedResponse } from '../utils/pagination';
-import { getHoursUntilAppointment, combineDateAndTime } from '../utils/date';
+import { getHoursUntilAppointment, combineDateAndTime, parseTimeToUTC } from '../utils/date';
 
 export interface GetAppointmentsParams {
   userId: number;
@@ -25,8 +25,11 @@ export class AppointmentService {
       throw new AppError('No es posible reservar un turno en una fecha u horario que ya ha transcurrido', 400);
     }
 
+    const dateUtc = new Date(data.date.includes('T') ? data.date : `${data.date}T00:00:00.000Z`);
+    const timeUtc = parseTimeToUTC(data.time);
+
     // 2. Validar que el horario no esté ocupado por otro usuario
-    const isBusy = await this.appointmentRepo.isSlotBusy(data.businessId, new Date(data.date), new Date(data.time), userId);
+    const isBusy = await this.appointmentRepo.isSlotBusy(data.businessId, dateUtc, timeUtc, userId);
     if (isBusy) {
       throw new AppError('El horario seleccionado ya no se encuentra disponible', 400);
     }
@@ -41,8 +44,8 @@ export class AppointmentService {
       businessId: data.businessId,
       serviceId: data.serviceId,
       userId,
-      date: new Date(data.date),
-      time: new Date(data.time),
+      date: dateUtc,
+      time: timeUtc,
       holdToken,
       holdExpiresAt: expiresAt
     });
@@ -72,7 +75,10 @@ export class AppointmentService {
       throw new AppError('No es posible reservar un turno en una fecha u horario que ya ha transcurrido', 400);
     }
 
-    const isBusy = await this.appointmentRepo.isSlotBusy(data.businessId, new Date(data.date), new Date(data.time), userId);
+    const dateUtc = new Date(data.date.includes('T') ? data.date : `${data.date}T00:00:00.000Z`);
+    const timeUtc = parseTimeToUTC(data.time);
+
+    const isBusy = await this.appointmentRepo.isSlotBusy(data.businessId, dateUtc, timeUtc, userId);
     if (isBusy) {
       throw new AppError('El horario seleccionado ya no se encuentra disponible', 400);
     }
@@ -81,8 +87,8 @@ export class AppointmentService {
       businessId: data.businessId,
       serviceId: data.serviceId,
       userId,
-      date: new Date(data.date),
-      time: new Date(data.time),
+      date: dateUtc,
+      time: timeUtc,
       status: 'CONFIRMED'
     });
 
