@@ -45,6 +45,6 @@ export interface IAppointmentRepository {
   count(): Promise<number>;
   autoCompleteExpiredAppointments(graceHours?: number): Promise<number>;
   findBusySlotsByDate(businessId: number, date: string): Promise<string[]>;
-  isSlotBusy(businessId: number, date: Date, time: Date, excludeUserId?: number): Promise<boolean>;
+  isSlotBusy(businessId: number, date: Date, time: Date, durationMinutes?: number, excludeUserId?: number): Promise<boolean>;
   clearPendingHolds(userId: number): Promise<void>;
 }

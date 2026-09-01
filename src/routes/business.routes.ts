@@ -13,11 +13,15 @@ router.patch('/:id', authGuard, businessController.updateBusiness);
 // Servicios dependientes del negocio
 router.get('/:id/services', serviceController.getServices);
 router.post('/:id/services', authGuard, serviceController.createService);
+router.put('/:id/services/:serviceId', authGuard, serviceController.updateService);
+router.patch('/:id/services/:serviceId', authGuard, serviceController.updateService);
 router.delete('/:id/services/:serviceId', authGuard, serviceController.deleteService);
 
 // Horarios dependientes del negocio
 router.get('/:id/schedules', scheduleController.getSchedules);
 router.post('/:id/schedules', authGuard, scheduleController.createSchedule);
+router.put('/:id/schedules/:scheduleId', authGuard, scheduleController.updateSchedule);
+router.patch('/:id/schedules/:scheduleId', authGuard, scheduleController.updateSchedule);
 router.delete('/:id/schedules/:scheduleId', authGuard, scheduleController.deleteSchedule);
 
 // Horarios ocupados del negocio para una fecha
