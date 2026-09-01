@@ -13,6 +13,8 @@ router.patch('/:id', authGuard, businessController.updateBusiness);
 // Servicios dependientes del negocio
 router.get('/:id/services', serviceController.getServices);
 router.post('/:id/services', authGuard, serviceController.createService);
+router.put('/:id/services/:serviceId', authGuard, serviceController.updateService);
+router.patch('/:id/services/:serviceId', authGuard, serviceController.updateService);
 router.delete('/:id/services/:serviceId', authGuard, serviceController.deleteService);
 
 // Horarios dependientes del negocio

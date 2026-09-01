@@ -25,6 +25,13 @@ export class PrismaServiceRepository implements IServiceRepository {
     });
   }
 
+  async update(id: number, data: Partial<CreateServiceDTO>): Promise<Service> {
+    return this.prisma.service.update({
+      where: { id },
+      data
+    });
+  }
+
   async delete(id: number): Promise<Service> {
     return this.prisma.service.delete({
       where: { id }

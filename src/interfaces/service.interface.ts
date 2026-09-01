@@ -14,5 +14,6 @@ export interface IServiceRepository {
   findById(id: number): Promise<Service | null>;
   findByBusinessId(businessId: number): Promise<Service[]>;
   create(businessId: number, data: CreateServiceDTO): Promise<Service>;
+  update(id: number, data: Partial<CreateServiceDTO>): Promise<Service>;
   delete(id: number): Promise<Service>;
 }

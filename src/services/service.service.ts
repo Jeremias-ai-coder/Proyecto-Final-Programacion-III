@@ -30,6 +30,29 @@ export class ServiceService {
     return this.serviceRepo.create(businessId, data);
   }
 
+  async updateService(
+    businessId: number,
+    serviceId: number,
+    user: { id: number; role: string },
+    data: Partial<CreateServiceDTO>
+  ) {
+    const business = await this.businessRepo.findById(businessId);
+    if (!business) {
+      throw new AppError('Negocio no encontrado', 404);
+    }
+
+    if (business.ownerId !== user.id && user.role !== 'administrator') {
+      throw new AppError('No tienes permiso para modificar servicios de este negocio', 403);
+    }
+
+    const existingService = await this.serviceRepo.findById(serviceId);
+    if (!existingService || existingService.businessId !== businessId) {
+      throw new AppError('Servicio no encontrado en este negocio', 404);
+    }
+
+    return this.serviceRepo.update(serviceId, data);
+  }
+
   async deleteService(businessId: number, serviceId: number, user: { id: number; role: string }) {
     const business = await this.businessRepo.findById(businessId);
     if (!business) {
