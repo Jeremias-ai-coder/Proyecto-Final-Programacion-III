@@ -37,7 +37,7 @@ export const reviewRepository = new PrismaReviewRepository(prisma);
 // 2. Instanciación de Servicios (Inyección de Repositorios)
 export const serviceService = new ServiceService(serviceRepository, businessRepository);
 export const businessService = new BusinessService(businessRepository, userRepository);
-export const appointmentService = new AppointmentService(appointmentRepository);
+export const appointmentService = new AppointmentService(appointmentRepository, serviceRepository);
 export const authService = new AuthService(userRepository);
 export const scheduleService = new ScheduleService(scheduleRepository, businessRepository);
 export const adminService = new AdminService(userRepository, businessRepository, appointmentRepository);

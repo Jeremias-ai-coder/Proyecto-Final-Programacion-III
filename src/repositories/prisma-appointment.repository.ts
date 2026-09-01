@@ -220,14 +220,48 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         ]
       },
       select: {
-        time: true
+        time: true,
+        service: {
+          select: {
+            durationMinutes: true
+          }
+        }
       }
     });
 
-    return appointments.map(apt => apt.time.toISOString());
+    const busySlotsSet = new Set<string>();
+
+    for (const apt of appointments) {
+      const rawTime = apt.time.toISOString();
+      const duration = apt.service?.durationMinutes || 30;
+      const effectiveDuration = Math.max(30, Math.ceil(duration / 30) * 30);
+      const slotsCount = effectiveDuration / 30;
+
+      const match = rawTime.match(/T(\d{2}):(\d{2})/);
+      if (match) {
+        const totalMinutes = Number(match[1]) * 60 + Number(match[2]);
+        for (let i = 0; i < slotsCount; i++) {
+          const slotH = Math.floor((totalMinutes + i * 30) / 60);
+          const slotM = (totalMinutes + i * 30) % 60;
+          const hStr = String(slotH).padStart(2, '0');
+          const mStr = String(slotM).padStart(2, '0');
+          busySlotsSet.add(`1970-01-01T${hStr}:${mStr}:00.000Z`);
+        }
+      } else {
+        busySlotsSet.add(rawTime);
+      }
+    }
+
+    return Array.from(busySlotsSet);
   }
 
-  async isSlotBusy(businessId: number, date: Date, time: Date, excludeUserId?: number): Promise<boolean> {
+  async isSlotBusy(
+    businessId: number,
+    date: Date,
+    time: Date,
+    durationMinutes: number = 30,
+    excludeUserId?: number
+  ): Promise<boolean> {
     const dateStr = date.toISOString().split('T')[0];
     const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
@@ -243,14 +277,13 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
       });
     } catch { /* ignore */ }
 
-    const existing = await this.prisma.appointment.findFirst({
+    const appointments = await this.prisma.appointment.findMany({
       where: {
         businessId,
         date: {
           gte: startOfDay,
           lte: endOfDay
         },
-        time,
         OR: [
           { status: 'CONFIRMED' },
           { status: 'IN_PROGRESS' },
@@ -261,10 +294,30 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             ...(excludeUserId ? { userId: { not: excludeUserId } } : {})
           }
         ]
+      },
+      include: {
+        service: {
+          select: { durationMinutes: true }
+        }
       }
     });
 
-    return !!existing;
+    const requestedStartM = time.getUTCHours() * 60 + time.getUTCMinutes();
+    const requestedEffectiveDuration = Math.max(30, Math.ceil((durationMinutes || 30) / 30) * 30);
+    const requestedEndM = requestedStartM + requestedEffectiveDuration;
+
+    for (const apt of appointments) {
+      const existingStartM = apt.time.getUTCHours() * 60 + apt.time.getUTCMinutes();
+      const existingDuration = Math.max(30, Math.ceil((apt.service?.durationMinutes || 30) / 30) * 30);
+      const existingEndM = existingStartM + existingDuration;
+
+      // Solapamiento de intervalos semiabiertos [start, end)
+      if (requestedStartM < existingEndM && requestedEndM > existingStartM) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   async clearPendingHolds(userId: number): Promise<void> {
